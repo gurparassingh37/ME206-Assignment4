@@ -1,0 +1,2053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gravity Lab — Interactive Two-Body Gravitational Simulator</title>
+<style>
+/* =====================================================================
+   STYLES — dark scientific theme (navy / cyan / amber)
+   ===================================================================== */
+:root{
+  --bg:#060e1f; --bg2:#0a1630; --panel:#0c1a35; --panel2:#10213f; --border:#1c3157; --border2:#284373;
+  --text:#d8e4f5; --muted:#8094b6; --dim:#5a6d8f;
+  --cyan:#3fd0ff; --amber:#ffb547; --mint:#5ef0b8; --coral:#ff7a7a; --violet:#b18cff;
+  --green:#3ddc97; --yellow:#ffd166; --red:#ff5d6c;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:radial-gradient(1200px 700px at 30% -10%, #10234a 0%, var(--bg) 60%) fixed;color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.45}
+a{color:var(--cyan)}
+h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:.2px}
+button,select,input{font-family:inherit;font-size:12px;color:var(--text)}
+.mono{font-family:var(--mono)}
+
+/* ---------- top bar ---------- */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 18px;border-bottom:1px solid var(--border);background:rgba(6,14,31,.7);backdrop-filter:blur(6px);position:sticky;top:0;z-index:20}
+.brand{display:flex;align-items:center;gap:12px}
+.brand h1{font-size:18px}
+.brand p{margin:0;color:var(--muted);font-size:11.5px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--border2);border-radius:999px;padding:3px 10px;font-size:11.5px;color:var(--muted);background:var(--bg2);white-space:nowrap}
+.chip.cls-circular{color:var(--mint);border-color:#2b6b58}
+.chip.cls-elliptical{color:var(--cyan);border-color:#22618a}
+.chip.cls-parabolic{color:var(--yellow);border-color:#7a6630}
+.chip.cls-hyperbolic{color:var(--coral);border-color:#7a3a3a}
+
+/* ---------- main layout ---------- */
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr) 300px;gap:12px;padding:12px 14px;align-items:start}
+.card{background:linear-gradient(180deg,var(--panel) 0%,var(--bg2) 100%);border:1px solid var(--border);border-radius:var(--r)}
+.panel{max-height:calc(100vh - 84px);overflow:auto;position:sticky;top:66px;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.panel .card{margin-bottom:10px}
+.card-h{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)}
+.card-h b{color:var(--text);font-weight:600}
+.card-b{padding:10px 12px}
+details.grp{border-bottom:1px solid var(--border)}
+details.grp:last-child{border-bottom:none}
+details.grp>summary{list-style:none;cursor:pointer;padding:8px 12px;font-size:11px;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;user-select:none}
+details.grp>summary::-webkit-details-marker{display:none}
+details.grp>summary::after{content:"▸";transition:transform .2s;color:var(--dim)}
+details.grp[open]>summary::after{transform:rotate(90deg)}
+details.grp>summary:hover{color:var(--text)}
+.grp-b{padding:2px 12px 12px}
+
+/* ---------- form rows ---------- */
+.row{display:flex;align-items:center;gap:6px;margin:6px 0}
+.row label,.lbl{color:var(--muted);font-size:11.5px;min-width:64px}
+.row .grow{flex:1;min-width:0}
+input[type=text],input[type=number],select{background:#081329;border:1px solid var(--border2);border-radius:6px;padding:5px 7px;outline:none;width:100%;transition:border-color .15s}
+input[type=text]:focus,input[type=number]:focus,select:focus{border-color:var(--cyan)}
+input[type=text].bad{border-color:var(--red)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;background:var(--border2);border-radius:3px;outline:none;margin:6px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--cyan);border:2px solid #04101f;cursor:pointer}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--cyan);border:2px solid #04101f;cursor:pointer}
+input[type=range].amber::-webkit-slider-thumb{background:var(--amber)}
+input[type=range].amber::-moz-range-thumb{background:var(--amber)}
+input[type=range]:disabled{opacity:.35}
+input[type=checkbox]{accent-color:var(--cyan)}
+.btn{background:#0f2246;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;cursor:pointer;transition:background .15s,border-color .15s,transform .05s;white-space:nowrap}
+.btn:hover{background:#163063;border-color:#3a5d99}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:linear-gradient(180deg,#1aa6d6,#0e7fae);border-color:#2bb8e8;color:#02121f;font-weight:600}
+.btn.primary:hover{background:linear-gradient(180deg,#2bb8e8,#1190c2)}
+.btn.amber{background:linear-gradient(180deg,#f0a63a,#c97f17);border-color:#ffc061;color:#1d1202;font-weight:600}
+.btn.sm{padding:3px 7px;font-size:11px}
+.btn.on{border-color:var(--cyan);color:var(--cyan)}
+.btn-row{display:flex;gap:6px;flex-wrap:wrap}
+.preset-grid{display:grid;grid-template-columns:1fr;gap:5px}
+.preset{display:flex;gap:8px;align-items:center;text-align:left;width:100%}
+.preset .k{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:5px;background:#0a1a38;border:1px solid var(--border2);color:var(--amber);font-weight:700;font-size:11px;flex:none}
+.preset.active{border-color:var(--amber)}
+.note{color:var(--muted);font-size:11.5px;margin:6px 0 0}
+.readout{font-family:var(--mono);font-size:11.5px;color:var(--text)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:11.5px}
+.kv span:nth-child(odd){color:var(--muted)}
+.kv span:nth-child(even){font-family:var(--mono);text-align:right}
+.toggles{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px}
+.toggles label{display:flex;align-items:center;gap:6px;color:var(--text);font-size:11.5px;cursor:pointer}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px}
+
+/* ---------- stage ---------- */
+.stage{position:relative;overflow:hidden}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border)}
+.toolbar .sep{width:1px;height:22px;background:var(--border)}
+.toolbar .tgroup{display:flex;align-items:center;gap:6px}
+.toolbar .tgroup span{color:var(--muted);font-size:11px}
+.toolbar select{width:auto}
+.toolbar input[type=range]{width:110px}
+#simCanvas{display:block;width:100%;height:min(72vh,780px);min-height:340px;cursor:grab;touch-action:none}
+#simCanvas.drag{cursor:grabbing}
+.toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%) translateY(20px);background:rgba(10,22,48,.95);border:1px solid var(--border2);padding:7px 14px;border-radius:8px;font-size:12px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;max-width:80%;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.warn{border-color:var(--yellow);color:var(--yellow)}
+.toast.err{border-color:var(--red);color:var(--red)}
+.statline{display:flex;gap:14px;flex-wrap:wrap;padding:6px 10px;border-top:1px solid var(--border);color:var(--muted);font-size:11px;font-family:var(--mono)}
+.statline b{color:var(--text);font-weight:500}
+
+/* ---------- dashboard ---------- */
+.dgroup{padding:6px 12px 8px;border-bottom:1px solid var(--border)}
+.dgroup:last-child{border-bottom:none}
+.dgroup h4{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);margin:4px 0 4px}
+.drow{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:2px 0;border-bottom:1px dashed rgba(40,67,115,.35)}
+.drow:last-child{border-bottom:none}
+.drow .dl{color:var(--muted);font-size:11.5px;white-space:nowrap}
+.drow .dv{font-family:var(--mono);font-size:11.5px;text-align:right;white-space:nowrap}
+.dv .u{color:var(--dim);margin-left:4px;font-size:10.5px}
+[data-tip]{cursor:help}
+[data-tip] .dl{border-bottom:1px dotted var(--dim)}
+.classbox{margin:4px 0 2px;padding:6px 8px;border-radius:6px;border:1px solid var(--border2);text-align:center;font-weight:600;letter-spacing:.5px}
+#tooltip{position:fixed;z-index:100;pointer-events:none;background:#0b1a38;border:1px solid var(--cyan);color:var(--text);padding:6px 9px;border-radius:6px;font-family:var(--mono);font-size:11.5px;max-width:320px;opacity:0;transition:opacity .12s;box-shadow:0 6px 24px rgba(0,0,0,.5);white-space:pre-line}
+#tooltip.show{opacity:1}
+
+/* ---------- analysis ---------- */
+.analysis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:0 14px 12px}
+.analysis .wide{grid-column:1 / -1}
+canvas.plot{display:block;width:100%;height:220px;background:#071129;border:1px solid var(--border);border-radius:8px}
+canvas.plot.sm{height:170px}
+.ind-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.ind{border:1px solid var(--border2);border-radius:8px;padding:7px 9px;background:#081329}
+.ind .t{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+.ind .v{font-family:var(--mono);font-size:13px;margin-top:3px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--dim);box-shadow:0 0 8px currentColor;display:inline-block}
+.dot.g{background:var(--green);color:var(--green)}.dot.y{background:var(--yellow);color:var(--yellow)}.dot.r{background:var(--red);color:var(--red)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sub{font-size:11px;letter-spacing:1.1px;text-transform:uppercase;color:var(--amber);margin:12px 0 6px}
+.sub:first-child{margin-top:0}
+ul.principles{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:12px}
+ul.principles b{color:var(--text)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin:6px 0}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+table.tests{width:100%;border-collapse:collapse;font-size:11.5px}
+table.tests th,table.tests td{padding:5px 6px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+table.tests th{color:var(--muted);font-weight:500;font-size:10.5px;letter-spacing:1px;text-transform:uppercase}
+table.tests td.m{font-family:var(--mono)}
+.pass{color:var(--green);font-weight:700}.fail{color:var(--red);font-weight:700}
+.eq{font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;font-size:15px;color:#eaf2ff;background:#081329;border:1px solid var(--border);border-radius:6px;padding:6px 10px;margin:6px 0;overflow-x:auto;white-space:nowrap}
+.eq .v{font-style:italic}
+
+/* ---------- theory ---------- */
+.theory{padding:0 14px 20px}
+.theory details.main>summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:14px;font-weight:600;display:flex;justify-content:space-between}
+.theory details.main>summary::-webkit-details-marker{display:none}
+.theory details.main>summary::after{content:"Show ▾";color:var(--muted);font-weight:400;font-size:12px}
+.theory details.main[open]>summary::after{content:"Hide ▴"}
+.th-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px;padding:0 14px 14px}
+.th{border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:#0a1630}
+.th h3{font-size:13px;color:var(--cyan);margin-bottom:4px}
+.th p{margin:4px 0;color:#b9c8e0;font-size:12.5px}
+footer{color:var(--dim);font-size:11px;text-align:center;padding:4px 0 18px}
+
+/* ---------- responsive ---------- */
+@media (max-width:1380px){
+  .layout{grid-template-columns:290px minmax(0,1fr)}
+  .layout #dashPanel{grid-column:1 / -1;position:static;max-height:none}
+  #dashPanel .card{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+  #dashPanel .card .card-h{grid-column:1 / -1}
+}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .panel{position:static;max-height:none}
+  .layout .stage{order:-1}
+  #dashPanel .card{grid-template-columns:1fr}
+  .analysis{grid-template-columns:1fr}
+  .two{grid-template-columns:1fr}
+  .ind-grid{grid-template-columns:1fr}
+  #simCanvas{height:62vh}
+  .topbar{position:static}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true">
+      <ellipse cx="20" cy="20" rx="17" ry="9" fill="none" stroke="#3fd0ff" stroke-width="1.4" opacity=".7" transform="rotate(-25 20 20)"/>
+      <ellipse cx="20" cy="20" rx="9" ry="5" fill="none" stroke="#ffb547" stroke-width="1.4" opacity=".8" transform="rotate(-25 20 20)"/>
+      <circle cx="16" cy="22" r="4" fill="#3fd0ff"/><circle cx="33" cy="12.5" r="2.6" fill="#ffb547"/>
+      <circle cx="20" cy="20" r="1.4" fill="#fff"/>
+    </svg>
+    <div><h1>Gravity Lab</h1><p>Interactive Newtonian two-body simulator · SI units · G = 6.674×10⁻¹¹ N·m²/kg²</p></div>
+  </div>
+  <div class="chips">
+    <span id="chipClass" class="chip">—</span>
+    <span id="chipTests" class="chip">self-tests: pending</span>
+    <span id="chipFps" class="chip mono">— fps</span>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- ================= LEFT: EXPERIMENT & PARAMETER PANEL ================= -->
+  <aside class="panel" id="ctrlPanel">
+    <div class="card">
+      <div class="card-h"><b>Experiment setup</b><span id="presetName">custom</span></div>
+
+      <details class="grp" open>
+        <summary>Orbit experiments</summary>
+        <div class="grp-b">
+          <div class="preset-grid">
+            <button class="btn preset" data-preset="A"><span class="k">A</span>Equal-mass binary</button>
+            <button class="btn preset" data-preset="B"><span class="k">B</span>Sun–Earth system</button>
+            <button class="btn preset" data-preset="C"><span class="k">C</span>Escape-velocity experiment</button>
+            <button class="btn preset" data-preset="D"><span class="k">D</span>Highly eccentric orbit</button>
+            <button class="btn preset" data-preset="E"><span class="k">E</span>Earth satellite (LEO)</button>
+          </div>
+          <p class="note" id="presetDesc">Choose an experiment, or set masses and orbit below.</p>
+        </div>
+      </details>
+
+      <details class="grp" open>
+        <summary>Masses</summary>
+        <div class="grp-b">
+          <div class="row"><label style="color:var(--cyan)">m₁ (kg)</label><input type="text" id="m1Txt" class="grow mono"></div>
+          <input type="range" id="m1Sl" min="0" max="31" step="0.01">
+          <div class="btn-row"><button class="btn sm" data-m="1" data-mass="Earth">Earth</button><button class="btn sm" data-m="1" data-mass="Moon">Moon</button><button class="btn sm" data-m="1" data-mass="Sun">Sun</button></div>
+          <div class="row" style="margin-top:10px"><label style="color:var(--amber)">m₂ (kg)</label><input type="text" id="m2Txt" class="grow mono"></div>
+          <input type="range" id="m2Sl" class="amber" min="0" max="31" step="0.01">
+          <div class="btn-row"><button class="btn sm" data-m="2" data-mass="Earth">Earth</button><button class="btn sm" data-m="2" data-mass="Moon">Moon</button><button class="btn sm" data-m="2" data-mass="Sun">Sun</button></div>
+        </div>
+      </details>
+
+      <details class="grp" open>
+        <summary>Orbital configuration</summary>
+        <div class="grp-b">
+          <div class="row"><label>Orbit type</label>
+            <select id="orbitMode" class="grow">
+              <option value="circular">Circular (auto v)</option>
+              <option value="elliptical">Elliptical (auto v)</option>
+              <option value="parabolic">Parabolic (auto v)</option>
+              <option value="hyperbolic">Hyperbolic (auto v)</option>
+              <option value="manual">Manual velocity</option>
+            </select></div>
+          <div class="row"><label>r₀ (m)</label><input type="text" id="r0Txt" class="grow mono"></div>
+          <input type="range" id="r0Sl" min="5" max="13.5" step="0.001">
+          <div id="eEllBox">
+            <div class="row"><label>e (ellipse)</label><input type="range" id="eEll" class="grow" min="0" max="0.99" step="0.001"><span class="readout" id="eEllV" style="width:44px;text-align:right"></span></div>
+            <div class="row"><label>Start at</label><select id="startAt" class="grow"><option value="peri">Periapsis (r₀ = r_p)</option><option value="apo">Apoapsis (r₀ = r_a)</option></select></div>
+          </div>
+          <div id="eHypBox">
+            <div class="row"><label>e (hyperb.)</label><input type="range" id="eHyp" class="grow" min="1.01" max="4" step="0.01"><span class="readout" id="eHypV" style="width:44px;text-align:right"></span></div>
+          </div>
+          <div id="manBox">
+            <div class="row"><label>v₀ (m/s)</label><input type="text" id="v0Txt" class="grow mono"></div>
+            <div class="row"><label>v₀ / v_esc</label><input type="range" id="vRatio" class="grow amber" min="0.05" max="2" step="0.005"><span class="readout" id="vRatioV" style="width:44px;text-align:right"></span></div>
+            <div class="row"><label>Launch angle</label><input type="range" id="angSl" class="grow" min="-85" max="85" step="1"><span class="readout" id="angV" style="width:44px;text-align:right"></span></div>
+            <p class="note">Angle is measured from the local horizontal (perpendicular to r₀) towards the outward radial direction.</p>
+          </div>
+          <div class="kv" style="margin-top:8px">
+            <span data-tip="μ_g = G(m₁ + m₂)">μ_g = G(m₁+m₂)</span><span id="roMu"></span>
+            <span data-tip="v_c = √(μ_g / r₀)">v_circular</span><span id="roVc"></span>
+            <span data-tip="v_esc = √(2μ_g / r₀)">v_escape</span><span id="roVe"></span>
+            <span>Initial v₀ (relative)</span><span id="roV0"></span>
+            <span>Predicted e (from IC)</span><span id="roE"></span>
+          </div>
+          <p class="note" id="icWarn" style="color:var(--yellow)"></p>
+        </div>
+      </details>
+
+      <details class="grp" open>
+        <summary>Display</summary>
+        <div class="grp-b">
+          <div class="toggles">
+            <label><input type="checkbox" id="tgGrid" checked>Grid</label>
+            <label><input type="checkbox" id="tgTrails" checked>Trails</label>
+            <label><input type="checkbox" id="tgVel" checked>Velocity <span class="sw" style="background:#9be8ff"></span></label>
+            <label><input type="checkbox" id="tgForce" checked>Force <span class="sw" style="background:var(--coral)"></span></label>
+            <label><input type="checkbox" id="tgCom" checked>COM marker</label>
+            <label><input type="checkbox" id="tgLine" checked>Separation line</label>
+            <label><input type="checkbox" id="tgApsis" checked>Peri/apoapsis</label>
+            <label><input type="checkbox" id="tgEllipse">Kepler ellipse</label>
+          </div>
+          <div class="row" style="margin-top:8px"><label>Trail length</label><input type="range" id="trailLen" class="grow" min="200" max="6000" step="100"><span class="readout" id="trailLenV" style="width:40px;text-align:right"></span></div>
+          <p class="note">Body sizes are drawn on a logarithmic visual scale; gravitational masses are unaffected. Vector arrows are scaled to their values at reset.</p>
+        </div>
+      </details>
+    </div>
+  </aside>
+
+  <!-- ================= CENTRE: MAIN SIMULATION CANVAS ================= -->
+  <section class="card stage" id="stage">
+    <div class="toolbar">
+      <div class="tgroup">
+        <button class="btn primary" id="btnPlay" style="min-width:72px">▶ Play</button>
+        <button class="btn" id="btnStep" title="Advance exactly one integration step Δt">Step</button>
+        <button class="btn" id="btnReset" title="Restore the initial conditions">Reset</button>
+      </div>
+      <div class="sep"></div>
+      <div class="tgroup"><span>Speed</span><input type="range" id="speedSl" min="-1.5" max="1.7" step="0.01"><span class="readout" id="speedV" style="width:46px"></span></div>
+      <div class="tgroup"><span>Integrator</span>
+        <select id="methodSel"><option value="verlet">Velocity-Verlet</option><option value="rk4">RK4</option></select></div>
+      <div class="tgroup"><span>Δt</span><input type="range" id="dtSl" min="2.3" max="4.7" step="0.01" title="Integration steps per reference orbit"><span class="readout" id="dtV" style="min-width:120px"></span></div>
+      <div class="sep"></div>
+      <div class="tgroup"><span>Camera</span>
+        <select id="camSel"><option value="com">Centre-of-mass frame</option><option value="follow1">Follow body 1</option><option value="inertial">Fixed inertial frame</option></select>
+        <button class="btn sm" id="btnFit" title="Auto-fit the orbit">Fit</button>
+        <button class="btn sm" id="btnZin">＋</button><button class="btn sm" id="btnZout">－</button>
+      </div>
+    </div>
+    <canvas id="simCanvas"></canvas>
+    <div class="toast" id="toast"></div>
+    <div class="statline">
+      <span>t = <b id="stT">0</b></span>
+      <span>steps <b id="stSteps">0</b></span>
+      <span>substeps/frame <b id="stSub">0</b></span>
+      <span>Δt <b id="stDt">—</b></span>
+      <span>status <b id="stStatus">ready</b></span>
+    </div>
+  </section>
+
+  <!-- ================= RIGHT: LIVE PHYSICS DASHBOARD ================= -->
+  <aside class="panel" id="dashPanel">
+    <div class="card" id="dashCard">
+      <div class="card-h"><b>Live physics dashboard</b><span>hover for formulas</span></div>
+      <div class="dgroup" id="dgMotion"><h4>Motion</h4></div>
+      <div class="dgroup" id="dgSystem"><h4>System properties</h4></div>
+      <div class="dgroup" id="dgOrbit"><h4>Orbital elements (relative orbit)</h4><div class="classbox" id="classBox">—</div></div>
+    </div>
+  </aside>
+</main>
+
+<!-- ================= ANALYSIS SECTIONS ================= -->
+<section class="analysis">
+  <!-- Energy & conservation -->
+  <div class="card">
+    <div class="card-h"><b>Conservation laws & numerical analysis</b><span>live simulation data</span></div>
+    <div class="card-b">
+      <div class="legend"><span><i style="background:var(--amber)"></i>Kinetic energy KE</span><span><i style="background:var(--cyan)"></i>Potential energy PE</span><span><i style="background:#ffffff"></i>Total E = KE + PE</span></div>
+      <canvas class="plot" id="energyCanvas"></canvas>
+      <div class="ind-grid">
+        <div class="ind" data-tip="|E − E₀| / |E₀| × 100 %&#10;(relative to |PE₀| when E₀ ≈ 0)"><div class="t"><span class="dot" id="indEdot"></span>Energy drift</div><div class="v" id="indE">—</div></div>
+        <div class="ind" data-tip="|L − L₀| / |L₀| × 100 %&#10;L = Σ mᵢ (xᵢ v_yᵢ − yᵢ v_xᵢ)"><div class="t"><span class="dot" id="indLdot"></span>Ang. mom. drift</div><div class="v" id="indL">—</div></div>
+        <div class="ind" data-tip="|P| = |m₁v₁ + m₂v₂|&#10;colour based on |P| / (μ v_rel)"><div class="t"><span class="dot" id="indPdot"></span>|Total momentum|</div><div class="v" id="indP">—</div></div>
+      </div>
+      <ul class="principles">
+        <li><b>Energy</b> is conserved because gravity is a conservative force (F = −∇U, with U = −Gm₁m₂/r).</li>
+        <li><b>Angular momentum</b> is conserved because the gravitational force is central: it acts along the line of centres and exerts zero torque about the COM.</li>
+        <li><b>Linear momentum</b> is conserved because there are no external forces: the internal forces are an equal and opposite pair (Newton's 3rd law).</li>
+      </ul>
+
+      <div class="two" style="margin-top:12px">
+        <div>
+          <div class="sub">External thrust perturbation (body 2)</div>
+          <div class="row"><label>Direction</label><select id="thDir" class="grow"><option value="prograde">Prograde (along v_rel)</option><option value="retrograde">Retrograde</option><option value="radial-out">Radial outward</option><option value="radial-in">Radial inward</option></select></div>
+          <div class="row"><label>Thrust</label><input type="range" id="thMag" class="grow amber" min="1" max="100" step="1"><span class="readout" id="thMagV" style="width:52px;text-align:right"></span></div>
+          <div class="row"><label>Burn time</label><input type="range" id="thDur" class="grow amber" min="0.5" max="10" step="0.5"><span class="readout" id="thDurV" style="width:52px;text-align:right"></span></div>
+          <div class="btn-row"><button class="btn amber" id="btnThrust">🔥 Fire thrust</button></div>
+          <p class="note">Thrust acceleration is set as a percentage of body 2's local gravitational acceleration Gm₁/r²; burn time is a percentage of the reference period. After a burn, E, L and P change by exactly the work, angular impulse and impulse of the external force; the small residuals are the integrator's own (bounded) error.</p>
+        </div>
+        <div>
+          <div class="sub">Work–energy & impulse balance</div>
+          <div class="kv">
+            <span data-tip="W = ∫ F_ext · v₂ dt">Work by thrust W</span><span id="balW">0 J</span>
+            <span>E − E₀</span><span id="balDE">0 J</span>
+            <span data-tip="Should be ≈ 0: the only energy change is the work done by the external force">(E − E₀) − W</span><span id="balRes">0 J</span>
+            <span data-tip="J = ∫ F_ext dt">|Impulse J|</span><span id="balJ">0 N·s</span>
+            <span data-tip="Should be ≈ 0: ΔP equals the external impulse">|ΔP − J|</span><span id="balPres">0 N·s</span>
+            <span data-tip="ΔL_ext = ∫ (r₂ × F_ext) dt">L − L₀ − ∫τ dt</span><span id="balLres">0</span>
+            <span>Thrust state</span><span id="balState">off</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Integrator comparison -->
+  <div class="card">
+    <div class="card-h"><b>Integrator comparison: Velocity-Verlet vs RK4</b><span>identical initial conditions</span></div>
+    <div class="card-b">
+      <div class="row" style="flex-wrap:wrap">
+        <label>Duration</label>
+        <select id="cmpPeriods" style="width:auto"><option value="5">5 periods</option><option value="20">20 periods</option><option value="100">100 periods</option><option value="500" selected>500 periods</option></select>
+        <label style="min-width:auto">Δt ×</label>
+        <select id="cmpDtMul" style="width:auto"><option value="1">1 (current Δt)</option><option value="4">4</option><option value="16">16</option><option value="64" selected>64</option></select>
+        <button class="btn primary" id="btnCmp">Run comparison</button>
+      </div>
+      <div class="legend"><span><i style="background:var(--cyan)"></i>Velocity-Verlet</span><span><i style="background:var(--amber)"></i>RK4</span><span>y-axis: log₁₀ |ΔE / E₀|</span></div>
+      <canvas class="plot" id="cmpCanvas"></canvas>
+      <div class="kv" style="margin-top:8px" id="cmpOut">
+        <span>Status</span><span id="cmpStatus">not run — uses the current setup</span>
+      </div>
+      <p class="note">Both runs start from the current initial conditions with the same <b>fixed</b> step and the same simulated duration. Velocity-Verlet is symplectic: its energy error oscillates (largest near periapsis) but does not grow. RK4 is 4th-order, so over short runs at the same Δt it is usually more accurate, but it is not symplectic and its energy error grows steadily with time. Example (preset D, Δt × 64): after 20 periods RK4's error (≈7×10⁻²) is below Verlet's (≈2×10⁻¹); after 500 periods Verlet's is unchanged while RK4's has grown by orders of magnitude.</p>
+    </div>
+  </div>
+
+  <!-- Kepler's laws -->
+  <div class="card">
+    <div class="card-h"><b>Kepler's Laws</b><span>measured from the simulation</span></div>
+    <div class="card-b">
+      <div class="sub">First law — ellipse with the central mass at a focus</div>
+      <label style="display:flex;gap:6px;align-items:center;font-size:12px"><input type="checkbox" id="tgEllipse2">Show the analytic ellipse, centre, and both foci on the canvas</label>
+      <div class="kv" style="margin-top:6px">
+        <span>Semi-major axis a</span><span id="k1a">—</span>
+        <span>Semi-minor axis b = a√(1−e²)</span><span id="k1b">—</span>
+        <span>Focal distance c = ae</span><span id="k1c">—</span>
+        <span>Focus F₁</span><span id="k1f">COM / body 1</span>
+      </div>
+
+      <div class="sub">Second law — equal areas in equal times</div>
+      <div class="row"><label>Interval Δt</label><input type="range" id="kDt" class="grow" min="2" max="25" step="1"><span class="readout" id="kDtV" style="width:62px;text-align:right"></span></div>
+      <div class="btn-row">
+        <button class="btn sm" id="kMarkA" style="border-color:var(--amber)">Record A now</button>
+        <button class="btn sm" id="kMarkB" style="border-color:var(--cyan)">Record B now</button>
+        <button class="btn sm primary" id="kAuto">Auto: A at periapsis, B at apoapsis</button>
+        <button class="btn sm" id="kClear">Clear</button>
+      </div>
+      <div class="kv" style="margin-top:8px">
+        <span style="color:var(--amber)">Area A (relative orbit)</span><span id="kA">—</span>
+        <span style="color:var(--cyan)">Area B (relative orbit)</span><span id="kB">—</span>
+        <span>A / B</span><span id="kRatio">—</span>
+        <span data-tip="dA/dt = h/2  ⇒  A = |h|Δt/2">Theory |h|Δt/2</span><span id="kTh">—</span>
+        <span>Mean speed during A / B</span><span id="kV">—</span>
+      </div>
+
+      <div class="sub">Third law — T² = 4π²a³ / [G(m₁+m₂)]</div>
+      <div class="kv">
+        <span>Theoretical period</span><span id="k3T">—</span>
+        <span data-tip="Time for the separation vector r = r₂ − r₁ to sweep 2π (interpolated crossing)">Numerical period (measured)</span><span id="k3N">—</span>
+        <span>Relative difference</span><span id="k3E">—</span>
+        <span>T² / a³ (measured)</span><span id="k3R">—</span>
+        <span>4π² / [G(m₁+m₂)]</span><span id="k3R2">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Earth & GEO -->
+  <div class="card">
+    <div class="card-h"><b>Earth & geosynchronous orbit</b><span>integrated with main simulator</span></div>
+    <div class="card-b">
+      <div class="two">
+        <div>
+          <div class="eq">r<sub>geo</sub> = [ G M T² / (4π²) ]<sup>1/3</sup></div>
+          <div class="kv">
+            <span>Earth mass M</span><span>5.972×10²⁴ kg</span>
+            <span>Earth radius R</span><span>6.371×10⁶ m</span>
+            <span>Sidereal day T</span><span>86164.1 s</span>
+            <span>r_geo</span><span id="gR">—</span>
+            <span>Altitude r_geo − R</span><span id="gAlt">—</span>
+            <span>Circular speed √(GM/r)</span><span id="gV">—</span>
+            <span>Orbital period</span><span id="gT">—</span>
+          </div>
+        </div>
+        <div>
+          <div class="btn-row"><button class="btn primary" id="btnGeo">Load GEO experiment</button></div>
+          <label style="display:flex;gap:6px;align-items:center;font-size:12px;margin-top:8px"><input type="checkbox" id="tgEarth">Draw body 1 as rotating Earth (true radius)</label>
+          <div class="row" style="margin-top:6px"><label>Δr offset</label><input type="range" id="geoDr" class="grow amber" min="-2000" max="2000" step="10"><span class="readout" id="geoDrV" style="width:64px;text-align:right"></span></div>
+          <div class="kv">
+            <span>Satellite longitude rel. to station</span><span id="gLon">—</span>
+            <span>Measured drift</span><span id="gDrift">—</span>
+            <span data-tip="Δλ per sidereal day = 360° (T_sid / T_orbit − 1)&#10;positive = eastward">Predicted drift</span><span id="gPred">—</span>
+          </div>
+        </div>
+      </div>
+      <p class="note"><b style="color:var(--text)">Geosynchronous vs geostationary.</b> A <i>geosynchronous</i> orbit has a period equal to one sidereal day (86 164.1 s), so the satellite returns to the same point in the sky once per day; if it is inclined or eccentric it traces a figure-8 or tear-drop ground track. A <i>geostationary</i> orbit is the special geosynchronous orbit that is circular (e = 0) and equatorial (i = 0): the satellite then stays fixed above one ground longitude. This planar simulator shows the equatorial case. Raise the orbit (Δr &gt; 0) and the satellite drifts <b>westward</b> (longer period); lower it and it drifts <b>eastward</b>.</p>
+    </div>
+  </div>
+
+  <!-- Validation -->
+  <div class="card wide">
+    <div class="card-h"><b>Validation & self-tests</b><span>also printed to the browser developer console</span></div>
+    <div class="card-b">
+      <div class="btn-row"><button class="btn primary" id="btnTests">Re-run self-tests</button><span class="note" id="testsSummary" style="margin:0 0 0 8px;align-self:center"></span></div>
+      <table class="tests" style="margin-top:8px"><thead><tr><th>#</th><th>Test</th><th>Result</th><th>Measured error</th><th>Tolerance</th><th>Details</th></tr></thead><tbody id="testsBody"><tr><td colspan="6" class="note">Running…</td></tr></tbody></table>
+    </div>
+  </div>
+</section>
+
+<!-- ================= THEORY ================= -->
+<section class="theory">
+  <details class="main card">
+    <summary>Physics Behind the Simulation</summary>
+    <div class="th-grid">
+      <div class="th"><h3>1 · Newton's law of universal gravitation</h3>
+        <div class="eq"><b>F</b><sub>12</sub> = G m₁ m₂ (<b>r</b>₂ − <b>r</b>₁) / r³ ,  |F| = G m₁ m₂ / r²</div>
+        <p>Each mass attracts the other along the line of centres. The force on body 1 points toward body 2 and the force on body 2 is equal and opposite. Accelerations: <b>a</b>₁ = +Gm₂(<b>r</b>₂−<b>r</b>₁)/r³, <b>a</b>₂ = −Gm₁(<b>r</b>₂−<b>r</b>₁)/r³.</p></div>
+      <div class="th"><h3>2 · Centre of mass</h3>
+        <div class="eq"><b>R</b> = (m₁<b>r</b>₁ + m₂<b>r</b>₂)/(m₁+m₂),  M <b>V</b> = <b>P</b></div>
+        <p>With no external force, M d²<b>R</b>/dt² = 0, so the COM moves at constant velocity. The simulator starts with <b>P</b> = 0 and <b>R</b> = 0, so the COM stays fixed at the origin. Body positions about the COM: <b>r</b>₁ = −(m₂/M)<b>r</b>, <b>r</b>₂ = +(m₁/M)<b>r</b>.</p></div>
+      <div class="th"><h3>3 · Reduced mass & equivalent one-body problem</h3>
+        <div class="eq">μ = m₁m₂/(m₁+m₂),   μ d²<b>r</b>/dt² = −G m₁m₂ <b>r</b>/r³</div>
+        <p>Subtracting the two equations of motion gives a single body of mass μ moving about a fixed centre with gravitational parameter μ_g = G(m₁+m₂). Both real bodies trace scaled copies of this relative orbit about the COM (scale factors m₂/M and m₁/M).</p></div>
+      <div class="th"><h3>4 · Conservation of mechanical energy</h3>
+        <div class="eq">E = ½m₁v₁² + ½m₂v₂² − G m₁m₂/r = constant</div>
+        <p>Gravity is conservative (F = −∇U), so kinetic and potential energy exchange while their sum stays constant. In the COM frame E = μ ε with specific orbital energy ε = v²/2 − μ_g/r.</p></div>
+      <div class="th"><h3>5 · Conservation of angular momentum</h3>
+        <div class="eq"><b>L</b> = Σ mᵢ <b>r</b>ᵢ × <b>v</b>ᵢ ,  d<b>L</b>/dt = Σ <b>r</b>ᵢ × <b>F</b>ᵢ = 0</div>
+        <p>The forces are central and act along the same line, so their total torque about the COM is zero. The specific relative angular momentum h = |<b>r</b> × <b>v</b>| = r² dθ/dt is constant — this is Kepler's second law.</p></div>
+      <div class="th"><h3>6 · Vis-viva equation</h3>
+        <div class="eq">v² = μ_g ( 2/r − 1/a )</div>
+        <p>Follows from energy conservation with ε = −μ_g/(2a). It gives the relative speed at any separation r. At periapsis v_p = √(μ_g(1+e)/r_p); at apoapsis v_a = √(μ_g(1−e)/r_a), so v_p/v_a = r_a/r_p = (1+e)/(1−e).</p></div>
+      <div class="th"><h3>7 · Orbital eccentricity</h3>
+        <div class="eq"><b>e</b> = [ (v² − μ_g/r) <b>r</b> − (<b>r</b>·<b>v</b>) <b>v</b> ] / μ_g ,  e = √(1 + 2εh²/μ_g²)</div>
+        <p>The eccentricity vector points to periapsis. e = 0 circle, 0 &lt; e &lt; 1 ellipse (ε &lt; 0), e = 1 parabola (ε = 0), e &gt; 1 hyperbola (ε &gt; 0). r_p = h²/[μ_g(1+e)], r_a = h²/[μ_g(1−e)].</p></div>
+      <div class="th"><h3>8 · Circular orbital velocity</h3>
+        <div class="eq">v_c = √( μ_g / r )</div>
+        <p>Gravity supplies exactly the centripetal force: μ v²/r = G m₁m₂/r². Any other tangential speed at the same r produces an ellipse with that point as periapsis (v &gt; v_c) or apoapsis (v &lt; v_c).</p></div>
+      <div class="th"><h3>9 · Escape velocity</h3>
+        <div class="eq">v_esc = √( 2 μ_g / r ) = √2 · v_c</div>
+        <p>The speed at which ε = 0: kinetic energy just equals the depth of the potential well. v &lt; v_esc → bound (ellipse); v = v_esc → parabola; v &gt; v_esc → hyperbola with excess speed v_∞ = √(v² − v_esc²). The direction of launch does not matter for escape, only the speed.</p></div>
+      <div class="th"><h3>10 · Kepler's three laws</h3>
+        <div class="eq">r = a(1−e²)/(1+e cos θ) ;  dA/dt = h/2 ;  T² = 4π²a³/[G(m₁+m₂)]</div>
+        <p>(1) Bound orbits are ellipses with the central mass (in the two-body problem, the COM) at a focus. (2) The radius vector sweeps equal areas in equal times, because h is constant. (3) The square of the period is proportional to the cube of the semi-major axis; note the exact form uses m₁+m₂, not just the central mass.</p></div>
+      <div class="th"><h3>11 · Geosynchronous orbital radius</h3>
+        <div class="eq">G M m / r² = m ω² r ,  ω = 2π/T  ⇒  r_geo = [ G M T² / 4π² ]<sup>1/3</sup></div>
+        <p>Setting the orbital period equal to Earth's sidereal rotation period (86 164.1 s, rotation relative to the stars — not the 86 400 s solar day) gives r_geo ≈ 42 164 km, i.e. an altitude of about 35 786 km, with circular speed ≈ 3.075 km/s.</p></div>
+      <div class="th"><h3>Numerical integration</h3>
+        <div class="eq">Verlet: v<sub>n+½</sub> = v<sub>n</sub> + ½a<sub>n</sub>Δt ; x<sub>n+1</sub> = x<sub>n</sub> + v<sub>n+½</sub>Δt ; v<sub>n+1</sub> = v<sub>n+½</sub> + ½a<sub>n+1</sub>Δt</div>
+        <p>Velocity-Verlet is 2nd-order, time-reversible and symplectic; it conserves linear and angular momentum to round-off for central forces and keeps energy error bounded. RK4 is 4th-order but not symplectic. As a safety net near close approaches a step is subdivided only when Δt &gt; 0.3·√(r³/μ_g). Variable steps destroy the symplectic property, so the net is set to trigger only when a step would otherwise be dangerously coarse; the status bar reports when it acts.</p></div>
+    </div>
+  </details>
+</section>
+<footer>Gravity Lab · single-file offline simulator · HTML + CSS + vanilla JavaScript + Canvas 2D</footer>
+<div id="tooltip"></div>
+
+<!-- =====================================================================
+     SECTION 1 — PHYSICS ENGINE, NUMERICAL INTEGRATION, ORBITAL CALCULATIONS
+     (no DOM access here: this script can be run unchanged in Node.js)
+     ===================================================================== -->
+<script id="physics-engine">
+'use strict';
+const Phys = (function () {
+
+  /* ---------------- 1.1 Physical constants (SI) ---------------- */
+  const G = 6.674e-11;                 // gravitational constant  [N m² kg⁻²]
+  const C_LIGHT = 299792458;           // speed of light [m/s] (only used for a validity warning)
+  const TWO_PI = 2 * Math.PI;
+  const MASSES = { Earth: 5.972e24, Moon: 7.342e22, Sun: 1.989e30 };
+  const EARTH = { M: 5.972e24, R: 6.371e6, Tsid: 86164.1 };
+  const CLASS_TOL = { circular: 0.005, parabolic: 0.005 };   // tolerances on e used for classification
+
+  /* ---------------- 1.2 Gravitational acceleration ----------------
+     State vector layout s = [x1, y1, x2, y2, vx1, vy1, vx2, vy2].
+     Newton:  F = G m1 m2 / r²  along the line of centres.
+       a1 = +G m2 (r2 − r1) / r³      a2 = −G m1 (r2 − r1) / r³
+     Each body's acceleration is computed independently from the other's mass. */
+  function gravAcc(s, m1, m2, out) {
+    const dx = s[2] - s[0], dy = s[3] - s[1];
+    const r2 = dx * dx + dy * dy;
+    const r = Math.sqrt(r2);
+    const k = G / (r2 * r);                    // G / r³
+    out[0] = m2 * dx * k;  out[1] = m2 * dy * k;     // body 1
+    out[2] = -m1 * dx * k; out[3] = -m1 * dy * k;    // body 2
+  }
+
+  /* ---------------- 1.3 Initial conditions in the COM frame ----------------
+     Relative position  r = r2 − r1 = (r0, 0).
+     Relative velocity  v = v2 − v1 of magnitude vRel, launched at angle γ from the local
+     horizontal (+y, perpendicular to r) toward the outward radial direction (+x).
+     COM frame:  r1 = −(m2/M) r,  r2 = +(m1/M) r,  v1 = −(m2/M) v,  v2 = +(m1/M) v
+     ⇒ total momentum m1 v1 + m2 v2 = 0 and the COM is at the origin.               */
+  function initialState(m1, m2, r0, vRel, angleDeg) {
+    const M = m1 + m2, g = angleDeg * Math.PI / 180;
+    const vrx = vRel * Math.sin(g), vry = vRel * Math.cos(g);
+    const s = new Float64Array(8);
+    s[0] = -m2 / M * r0;  s[1] = 0;
+    s[2] = m1 / M * r0;   s[3] = 0;
+    s[4] = -m2 / M * vrx; s[5] = -m2 / M * vry;
+    s[6] = m1 / M * vrx;  s[7] = m1 / M * vry;
+    return s;
+  }
+
+  /* ---------------- 1.4 Characteristic speeds ----------------
+     μ_g = G(m1+m2),  v_c = √(μ_g/r0),  v_esc = √(2μ_g/r0)                         */
+  function characteristicSpeeds(m1, m2, r0) {
+    const mu = G * (m1 + m2);
+    return { mu, vc: Math.sqrt(mu / r0), ve: Math.sqrt(2 * mu / r0) };
+  }
+
+  /* Automatic tangential speed for each orbit type (vis-viva at an apse):
+       circular   v = √(μ/r0)
+       elliptical start at periapsis: v = √(μ(1+e)/r0) ; at apoapsis: v = √(μ(1−e)/r0)
+       parabolic  v = √(2μ/r0)                   (e = 1)
+       hyperbolic v = √(μ(1+e)/r0), e > 1, start at periapsis                     */
+  function autoSpeed(type, mu, r0, e, startAt) {
+    switch (type) {
+      case 'circular': return Math.sqrt(mu / r0);
+      case 'elliptical': return startAt === 'apo' ? Math.sqrt(mu * (1 - e) / r0) : Math.sqrt(mu * (1 + e) / r0);
+      case 'parabolic': return Math.sqrt(2 * mu / r0);
+      case 'hyperbolic': return Math.sqrt(mu * (1 + e) / r0);
+    }
+    return NaN;
+  }
+
+  /* Analytic elements from initial relative state (used for previews & reference period). */
+  function elementsFromRel(mu, rx, ry, vx, vy) {
+    const r = Math.hypot(rx, ry), v2 = vx * vx + vy * vy;
+    const eps = 0.5 * v2 - mu / r;                          // specific orbital energy
+    const h = rx * vy - ry * vx;                            // specific angular momentum (z)
+    const rv = rx * vx + ry * vy;
+    const ex = ((v2 - mu / r) * rx - rv * vx) / mu;         // eccentricity vector
+    const ey = ((v2 - mu / r) * ry - rv * vy) / mu;
+    const e = Math.hypot(ex, ey);
+    const a = Math.abs(eps) > 1e-15 * mu / r ? -mu / (2 * eps) : Infinity;   // semi-major axis
+    const p = h * h / mu;                                   // semi-latus rectum
+    const rp = p / (1 + e);
+    const ra = e < 1 ? p / (1 - e) : Infinity;
+    const bound = eps < 0 && e < 1;
+    const T = bound ? TWO_PI * Math.sqrt(a * a * a / mu) : Infinity;   // Kepler III
+    return { r, v: Math.sqrt(v2), eps, h, ex, ey, e, a, p, rp, ra, bound, T };
+  }
+
+  function classify(e) {
+    if (Math.abs(e - 1) < CLASS_TOL.parabolic) return 'parabolic';
+    if (e < CLASS_TOL.circular) return 'circular';
+    if (e < 1) return 'elliptical';
+    return 'hyperbolic';
+  }
+
+  /* Geosynchronous radius:  r_geo = [G M T² / (4π²)]^(1/3) */
+  function geoRadius(M, T) { return Math.cbrt(G * M * T * T / (4 * Math.PI * Math.PI)); }
+
+  /* ============================================================
+     1.5 SIMULATION — explicit two-body integration
+     ============================================================ */
+  class Simulation {
+    constructor(opts) { this.observers = []; this.reset(opts); }
+
+    reset(o) {
+      this.m1 = o.m1; this.m2 = o.m2; this.M = o.m1 + o.m2;
+      this.s = o.state ? Float64Array.from(o.state) : initialState(o.m1, o.m2, o.r0, o.v0, o.angle || 0);
+      this.t = 0; this.steps = 0;
+      this.method = o.method || 'verlet';
+      // Close-approach safety net: a step is split only if h > η √(r³/μ_g). η = 0.3 means it
+      // triggers only for genuinely dangerous steps; variable steps break Verlet's symplectic
+      // property, so in normal use (Δt small enough) the step size stays exactly constant.
+      this.eta = o.eta != null ? o.eta : 0.3;
+      this.maxSplit = o.maxSplit || 200000;
+      this.rCollide = o.rCollide || 0;
+      this.prev = new Float64Array(8);
+      this.a = new Float64Array(4); this.aValid = false; this.aOn = false;
+      this.k1 = new Float64Array(8); this.k2 = new Float64Array(8);
+      this.k3 = new Float64Array(8); this.k4 = new Float64Array(8);
+      this.tmp = new Float64Array(8); this._acc = new Float64Array(4); this._ta = new Float64Array(2);
+      this.thrust = null;
+      this.W = 0; this.Jx = 0; this.Jy = 0; this.Lext = 0;   // accumulated external work, impulse, angular impulse
+      this.status = 'ok'; this.statusMsg = ''; this.relativistic = false;
+      this.lastSplit = 1;
+      const d = diagnostics(this);
+      this.E0 = d.E; this.L0 = d.L; this.KE0 = d.KE; this.PE0 = d.PE; this.Px0 = d.Px; this.Py0 = d.Py;
+      this.minSep = d.r;
+      for (const ob of this.observers) if (ob.reset) ob.reset(this);
+    }
+
+    sep() { return Math.hypot(this.s[2] - this.s[0], this.s[3] - this.s[1]); }
+    setMethod(m) { this.method = m; this.aValid = false; }
+
+    /* External thrust on body 2: acceleration magnitude aMag [m/s²] for a duration [s]. */
+    fireThrust(aMag, dir, duration) {
+      this.thrust = { a: aMag, dir, left: duration, total: duration, F: aMag * this.m2 };
+      this.aValid = false;
+    }
+    thrustAccel(s, out) {
+      const T = this.thrust;
+      let ux, uy;
+      if (T.dir === 'prograde' || T.dir === 'retrograde') { ux = s[6] - s[4]; uy = s[7] - s[5]; }
+      else { ux = s[2] - s[0]; uy = s[3] - s[1]; }
+      const n = Math.hypot(ux, uy) || 1;
+      const sg = (T.dir === 'retrograde' || T.dir === 'radial-in') ? -1 : 1;
+      out[0] = sg * T.a * ux / n; out[1] = sg * T.a * uy / n;
+    }
+
+    /* Total acceleration (gravity + optional external thrust on body 2). */
+    accel(s, on, out) {
+      gravAcc(s, this.m1, this.m2, out);
+      if (on) { this.thrustAccel(s, this._ta); out[2] += this._ta[0]; out[3] += this._ta[1]; }
+    }
+    /* First-order form ds/dt = f(s) used by RK4. */
+    deriv(s, on, out) {
+      out[0] = s[4]; out[1] = s[5]; out[2] = s[6]; out[3] = s[7];
+      this.accel(s, on, this._acc);
+      out[4] = this._acc[0]; out[5] = this._acc[1]; out[6] = this._acc[2]; out[7] = this._acc[3];
+    }
+
+    /* ---- Velocity-Verlet (kick–drift–kick), 2nd order, symplectic ----
+         v(t+h/2) = v(t) + ½ a(t) h
+         x(t+h)   = x(t) + v(t+h/2) h
+         v(t+h)   = v(t+h/2) + ½ a(t+h) h
+       a(t+h) is cached and reused as a(t) of the next step (1 force evaluation per step). */
+    _verlet(h, on) {
+      const s = this.s, a = this.a;
+      if (!this.aValid || this.aOn !== on) this.accel(s, on, a);
+      const hh = 0.5 * h;
+      s[4] += hh * a[0]; s[5] += hh * a[1]; s[6] += hh * a[2]; s[7] += hh * a[3];
+      s[0] += h * s[4];  s[1] += h * s[5];  s[2] += h * s[6];  s[3] += h * s[7];
+      this.accel(s, on, a);
+      s[4] += hh * a[0]; s[5] += hh * a[1]; s[6] += hh * a[2]; s[7] += hh * a[3];
+      this.aValid = true; this.aOn = on;
+    }
+
+    /* ---- Classical 4th-order Runge–Kutta ----
+         k1 = f(s), k2 = f(s + h/2 k1), k3 = f(s + h/2 k2), k4 = f(s + h k3)
+         s(t+h) = s + h/6 (k1 + 2k2 + 2k3 + k4)                                  */
+    _rk4(h, on) {
+      const s = this.s, k1 = this.k1, k2 = this.k2, k3 = this.k3, k4 = this.k4, y = this.tmp;
+      this.deriv(s, on, k1);
+      for (let i = 0; i < 8; i++) y[i] = s[i] + 0.5 * h * k1[i];
+      this.deriv(y, on, k2);
+      for (let i = 0; i < 8; i++) y[i] = s[i] + 0.5 * h * k2[i];
+      this.deriv(y, on, k3);
+      for (let i = 0; i < 8; i++) y[i] = s[i] + h * k3[i];
+      this.deriv(y, on, k4);
+      const c = h / 6;
+      for (let i = 0; i < 8; i++) s[i] += c * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]);
+      this.aValid = false;
+    }
+
+    _singleStep(h, on) {
+      const s = this.s, p = this.prev, m2 = this.m2;
+      p.set(s);
+      let F0x = 0, F0y = 0;
+      if (on) { this.thrustAccel(s, this._ta); F0x = m2 * this._ta[0]; F0y = m2 * this._ta[1]; }
+      if (this.method === 'rk4') this._rk4(h, on); else this._verlet(h, on);
+      if (on) {
+        // Work–energy & impulse bookkeeping (trapezoidal rule):  W = ∫F·v₂dt, J = ∫F dt, ΔL = ∫ r₂×F dt
+        this.thrustAccel(s, this._ta);
+        const F1x = m2 * this._ta[0], F1y = m2 * this._ta[1];
+        this.W += 0.5 * h * (F0x * p[6] + F0y * p[7] + F1x * s[6] + F1y * s[7]);
+        this.Jx += 0.5 * h * (F0x + F1x); this.Jy += 0.5 * h * (F0y + F1y);
+        this.Lext += 0.5 * h * ((p[2] * F0y - p[3] * F0x) + (s[2] * F1y - s[3] * F1x));
+        this.thrust.left -= h;
+        if (this.thrust.left <= 1e-9 * this.thrust.total) { this.thrust.left = 0; this.aValid = false; }
+      }
+      this.t += h; this.steps++;
+      for (const ob of this.observers) ob.update(this, p, h);
+      // ---- safety guards ----
+      for (let i = 0; i < 8; i++) if (!Number.isFinite(s[i])) {
+        this.status = 'error'; this.statusMsg = 'Numerical overflow: state became non-finite. Reset the simulation.'; return;
+      }
+      const r = this.sep();
+      if (r < this.minSep) this.minSep = r;
+      if (r <= this.rCollide) {
+        this.status = 'collision';
+        this.statusMsg = 'Collision: separation fell below ' + this.rCollide.toExponential(3) + ' m. Simulation halted.';
+      }
+      const v1s = s[4] * s[4] + s[5] * s[5], v2s = s[6] * s[6] + s[7] * s[7];
+      if (Math.max(v1s, v2s) > 0.01 * C_LIGHT * C_LIGHT) this.relativistic = true;
+    }
+
+    /* Advance at constant thrust state; a step is split only when h > η √(r³/μ_g)
+       (protects close approaches and very high relative speeds from blowing up). */
+    _uniform(dt, on) {
+      let rem = dt, n = 0, maxk = 1;
+      const mu = G * this.M;
+      while (rem > 0) {
+        const r = this.sep();
+        const tdyn = Math.sqrt(r * r * r / mu);
+        const k = Math.max(1, Math.ceil(rem / (this.eta * tdyn)));
+        if (k > maxk) maxk = k;
+        const h = k === 1 ? rem : rem / k;
+        this._singleStep(h, on);
+        rem = k === 1 ? 0 : rem - h;
+        if (this.status !== 'ok') return false;
+        if (++n > this.maxSplit) {
+          this.status = 'stiff';
+          this.statusMsg = 'Extreme close approach (r = ' + r.toExponential(3) + ' m): adaptive step collapsed. Simulation halted.';
+          return false;
+        }
+      }
+      this.lastSplit = maxk;
+      return true;
+    }
+
+    /* Public: advance the system by dt seconds of simulated time. */
+    advance(dt) {
+      if (this.status !== 'ok') return false;
+      if (this.thrust && this.thrust.left > 0) {
+        const on = Math.min(dt, this.thrust.left);
+        if (!this._uniform(on, true)) return false;
+        dt -= on;
+        if (dt <= 0) return true;
+      }
+      return this._uniform(dt, false);
+    }
+  }
+
+  /* ============================================================
+     1.6 DIAGNOSTICS — every displayed physical quantity
+     ============================================================ */
+  function diagnostics(sim) {
+    const s = sim.s, m1 = sim.m1, m2 = sim.m2, M = m1 + m2, mu = G * M, mred = m1 * m2 / M;
+    const rx = s[2] - s[0], ry = s[3] - s[1], vx = s[6] - s[4], vy = s[7] - s[5];
+    const el = elementsFromRel(mu, rx, ry, vx, vy);
+    const v1 = Math.hypot(s[4], s[5]), v2 = Math.hypot(s[6], s[7]);
+    const KE = 0.5 * m1 * v1 * v1 + 0.5 * m2 * v2 * v2;             // KE = ½m₁v₁² + ½m₂v₂²
+    const PE = -G * m1 * m2 / el.r;                                  // PE = −G m₁ m₂ / r
+    const Px = m1 * s[4] + m2 * s[6], Py = m1 * s[5] + m2 * s[7];    // P = m₁v₁ + m₂v₂
+    const Rx = (m1 * s[0] + m2 * s[2]) / M, Ry = (m1 * s[1] + m2 * s[3]) / M;   // COM position
+    const Vx = Px / M, Vy = Py / M;                                  // COM velocity
+    const L = m1 * (s[0] * s[5] - s[1] * s[4]) + m2 * (s[2] * s[7] - s[3] * s[6]);  // L_z about origin
+    const Lcm = L - M * (Rx * Vy - Ry * Vx);                         // L about the COM
+    const vp = Math.abs(el.h) / el.rp;
+    const va = el.bound ? Math.abs(el.h) / el.ra : NaN;
+    const vinf = el.eps > 0 ? Math.sqrt(2 * el.eps) : 0;
+    return {
+      m1, m2, M, mu, mred, rx, ry, vx, vy, r: el.r, v1, v2, vrel: el.v,
+      KE, PE, E: KE + PE, Px, Py, P: Math.hypot(Px, Py), Rx, Ry, Vx, Vy, L, Lcm,
+      eps: el.eps, h: el.h, e: el.e, ex: el.ex, ey: el.ey, a: el.a, p: el.p, rp: el.rp, ra: el.ra,
+      bound: el.bound, T: el.T, vp, va, vinf, cls: classify(el.e)
+    };
+  }
+
+  /* ============================================================
+     1.7 ORBITAL OBSERVERS (called after every integration sub-step)
+     ============================================================ */
+
+  /* Numerical period: unwraps the polar angle of r = r2 − r1 and records the (linearly
+     interpolated) instant at which each additional 2π has been swept. */
+  class PeriodTracker {
+    reset(sim) { this.acc = 0; this.lastCross = sim.t; this.Tnum = NaN; this.count = 0; }
+    update(sim, p, h) {
+      const s = sim.s;
+      const a0 = Math.atan2(p[3] - p[1], p[2] - p[0]);
+      const a1 = Math.atan2(s[3] - s[1], s[2] - s[0]);
+      let d = a1 - a0;
+      if (d > Math.PI) d -= TWO_PI; else if (d < -Math.PI) d += TWO_PI;
+      const prev = Math.abs(this.acc);
+      this.acc += d;
+      const now = Math.abs(this.acc);
+      const nPrev = Math.floor(prev / TWO_PI), nNow = Math.floor(now / TWO_PI);
+      if (nNow > nPrev && now > prev) {
+        const target = nNow * TWO_PI;
+        const tc = sim.t - h + h * (target - prev) / (now - prev);
+        this.Tnum = tc - this.lastCross; this.lastCross = tc; this.count++;
+      }
+    }
+  }
+
+  /* Kepler-II sector recorder: accumulates the area swept by r = r2 − r1 over Δt.
+     dA = ½ |r(t) × r(t+h)|  (triangle with apex at the focus). Can wait for an apse. */
+  class SectorRecorder {
+    constructor() { this.clear(); }
+    clear() { this.state = 'idle'; this.pts = []; this.area = 0; this.arc = 0; this.elapsed = 0; this.dur = 0; this.trigger = null; this.t0 = 0; }
+    reset() { this.clear(); }
+    arm(trigger, dur) { this.clear(); this.state = 'armed'; this.trigger = trigger; this.dur = dur; }
+    begin(sim, dur) {
+      this.clear(); this.state = 'rec'; this.dur = dur; this.t0 = sim.t;
+      const s = sim.s; this.pts.push([s[2] - s[0], s[3] - s[1]]);
+    }
+    update(sim, p, h) {
+      const s = sim.s;
+      if (this.state === 'armed') {
+        const rvp = (p[2] - p[0]) * (p[6] - p[4]) + (p[3] - p[1]) * (p[7] - p[5]);
+        const rvn = (s[2] - s[0]) * (s[6] - s[4]) + (s[3] - s[1]) * (s[7] - s[5]);
+        if ((this.trigger === 'peri' && rvp <= 0 && rvn > 0) || (this.trigger === 'apo' && rvp >= 0 && rvn < 0)) {
+          const d = this.dur; this.begin(sim, d);
+        }
+        return;
+      }
+      if (this.state !== 'rec') return;
+      const x0 = p[2] - p[0], y0 = p[3] - p[1], x1 = s[2] - s[0], y1 = s[3] - s[1];
+      let f = 1;
+      if (this.elapsed + h > this.dur) f = (this.dur - this.elapsed) / h;   // partial last step
+      this.area += f * 0.5 * Math.abs(x0 * y1 - y0 * x1);
+      this.arc += f * Math.hypot(x1 - x0, y1 - y0);
+      this.elapsed += f * h;
+      const last = this.pts[this.pts.length - 1];
+      const ang = Math.abs(Math.atan2(last[0] * y1 - last[1] * x1, last[0] * x1 + last[1] * y1));
+      if (ang > 0.008 || f < 1) this.pts.push([x0 + f * (x1 - x0), y0 + f * (y1 - y0)]);
+      if (this.elapsed >= this.dur * (1 - 1e-12)) this.state = 'done';
+    }
+  }
+
+  /* ============================================================
+     1.8 AUTOMATED SELF-TESTS (results printed to the console)
+     ============================================================ */
+  function runSelfTests(log) {
+    log = log || console.log;
+    const res = [];
+    const add = (name, pass, measured, tol, detail) => res.push({ name, pass, measured, tol, detail });
+    const t0 = (typeof performance !== 'undefined' ? performance : Date).now();
+
+    // helper: build a simulation from orbit type
+    function mk(m1, m2, r0, type, e, method) {
+      const mu = G * (m1 + m2);
+      const v = autoSpeed(type, mu, r0, e || 0, 'peri');
+      const sim = new Simulation({ m1, m2, r0, v0: v, angle: 0, method: method || 'verlet' });
+      const el = elementsFromRel(mu, r0, 0, 0, v);
+      return { sim, mu, el, T: el.bound ? el.T : 2 * Math.PI * Math.sqrt(r0 ** 3 / mu) };
+    }
+
+    // ---- 1. Equal-mass binary: equal orbital radii about the COM and opposite velocities ----
+    try {
+      const { sim, T } = mk(2e30, 2e30, 1.5e11, 'elliptical', 0.3);
+      const dt = T / 4000; let worst = 0;
+      for (let i = 0; i < 4000 * 1.37; i++) {
+        sim.advance(dt);
+        const d = diagnostics(sim), s = sim.s;
+        const r1 = Math.hypot(s[0] - d.Rx, s[1] - d.Ry), r2 = Math.hypot(s[2] - d.Rx, s[3] - d.Ry);
+        const vsum = Math.hypot(s[4] + s[6], s[5] + s[7]) / Math.hypot(s[4], s[5]);
+        worst = Math.max(worst, Math.abs(r1 - r2) / (0.5 * d.r), vsum);
+      }
+      add('Equal-mass binary: |r₁−R| = |r₂−R| and v₁ = −v₂', worst < 1e-9, worst, 1e-9, 'e = 0.3, 1.37 periods, Verlet, Δt = T/4000; max of relative radius mismatch and |v₁+v₂|/|v₁|');
+    } catch (err) { add('Equal-mass binary', false, NaN, 1e-9, 'exception: ' + err.message); }
+
+    // ---- 2. Circular orbit: separation stays constant ----
+    try {
+      const { sim, T } = mk(5.972e24, 7.342e22, 3.844e8, 'circular');
+      const dt = T / 2000; let worst = 0;
+      for (let i = 0; i < 2000 * 5; i++) { sim.advance(dt); worst = Math.max(worst, Math.abs(sim.sep() - 3.844e8) / 3.844e8); }
+      add('Circular orbit: separation constant', worst < 1e-5, worst, 1e-5, 'Earth–Moon masses, r₀ = 3.844×10⁸ m, 5 periods, Verlet, Δt = T/2000; max |r − r₀|/r₀ (Verlet theory ≈ (ωΔt)²/2 = 4.9×10⁻⁶)');
+    } catch (err) { add('Circular orbit', false, NaN, 1e-5, 'exception: ' + err.message); }
+
+    // ---- 3. Energy conservation over a long circular-orbit simulation ----
+    try {
+      const { sim, T } = mk(1.989e30, 5.972e24, 1.496e11, 'circular');
+      const dt = T / 1000; let worst = 0; const E0 = sim.E0;
+      for (let i = 0; i < 1000 * 100; i++) { sim.advance(dt); if (i % 50 === 0) worst = Math.max(worst, Math.abs((diagnostics(sim).E - E0) / E0)); }
+      worst = Math.max(worst, Math.abs((diagnostics(sim).E - E0) / E0));
+      add('Energy conservation (long circular run)', worst < 1e-6, worst, 1e-6, 'Sun–Earth, 100 periods (100 000 steps), Verlet, Δt = T/1000; max |ΔE/E₀|');
+    } catch (err) { add('Energy conservation', false, NaN, 1e-6, 'exception: ' + err.message); }
+
+    // ---- 4. Angular momentum conservation (eccentric orbit) ----
+    try {
+      const { sim, T } = mk(3e24, 1e24, 1e8, 'elliptical', 0.6);
+      const dt = T / 2000; let worst = 0; const L0 = sim.L0;
+      for (let i = 0; i < 2000 * 20; i++) { sim.advance(dt); if (i % 20 === 0) worst = Math.max(worst, Math.abs((diagnostics(sim).L - L0) / L0)); }
+      add('Angular momentum conservation', worst < 1e-10, worst, 1e-10, 'm₁:m₂ = 3:1, e = 0.6, 20 periods, Verlet, Δt = T/2000; max |ΔL/L₀|');
+    } catch (err) { add('Angular momentum', false, NaN, 1e-10, 'exception: ' + err.message); }
+
+    // ---- 5. COM stability in the COM frame ----
+    try {
+      const { sim, T } = mk(5e24, 1e24, 1e8, 'elliptical', 0.5);
+      const dt = T / 2000; let worstR = 0, worstP = 0;
+      const pScale = sim.m2 * Math.hypot(sim.s[6], sim.s[7]);
+      for (let i = 0; i < 2000 * 10; i++) {
+        sim.advance(dt);
+        if (i % 10 === 0) { const d = diagnostics(sim); worstR = Math.max(worstR, Math.hypot(d.Rx, d.Ry) / 1e8); worstP = Math.max(worstP, d.P / pScale); }
+      }
+      const m = Math.max(worstR, worstP);
+      add('COM stability (COM frame)', m < 1e-10, m, 1e-10, 'm₁:m₂ = 5:1, e = 0.5, 10 periods; max(|R_cm|/r₀, |P|/(m₂|v₂|)) = ' + worstR.toExponential(2) + ', ' + worstP.toExponential(2));
+    } catch (err) { add('COM stability', false, NaN, 1e-10, 'exception: ' + err.message); }
+
+    // ---- 6. Geosynchronous satellite returns to its initial longitude after one sidereal day ----
+    try {
+      const rg = geoRadius(EARTH.M, EARTH.Tsid);
+      const sim = new Simulation({ m1: EARTH.M, m2: 1000, r0: rg, v0: Math.sqrt(G * (EARTH.M + 1000) / rg), angle: 0 });
+      const pt = new PeriodTracker(); sim.observers.push(pt); pt.reset(sim);
+      const N = 8616, dt = EARTH.Tsid / N;
+      for (let i = 0; i < N; i++) sim.advance(dt);
+      const omegaE = TWO_PI / EARTH.Tsid;
+      let lon = (pt.acc - omegaE * sim.t) * 180 / Math.PI;     // longitude relative to rotating Earth
+      lon = ((lon + 180) % 360 + 360) % 360 - 180;
+      add('Geosynchronous: longitude returns after 1 sidereal day', Math.abs(lon) < 0.01, Math.abs(lon), 0.01, 'r_geo = ' + (rg / 1e3).toFixed(1) + ' km, Δt ≈ 10 s, Verlet; |Δλ| in degrees');
+    } catch (err) { add('Geosynchronous', false, NaN, 0.01, 'exception: ' + err.message); }
+
+    // ---- 7. Kepler's third law: analytical vs numerical period ----
+    try {
+      const m1 = 1.989e30, m2 = 1.898e27, e = 0.7, rp = 7.4e11;
+      const { sim, el } = mk(m1, m2, rp, 'elliptical', e);
+      const Tth = 2 * Math.PI * Math.sqrt(el.a ** 3 / (G * (m1 + m2)));
+      const pt = new PeriodTracker(); sim.observers.push(pt); pt.reset(sim);
+      const dt = Tth / 5000;
+      for (let i = 0; i < 5000 * 3.2; i++) sim.advance(dt);
+      const err = Math.abs(pt.Tnum - Tth) / Tth;
+      add("Kepler's 3rd law: T_num vs 2π√(a³/G(m₁+m₂))", err < 1e-4 && pt.count >= 3, err, 1e-4, 'Sun + Jupiter mass, e = 0.7, T_th = ' + Tth.toExponential(5) + ' s, T_num = ' + pt.Tnum.toExponential(5) + ' s');
+    } catch (err) { add("Kepler's 3rd law", false, NaN, 1e-4, 'exception: ' + err.message); }
+
+    // ---- 8. Escape velocity: bound/unbound transition ----
+    try {
+      const m1 = 5.972e24, m2 = 1000, r0 = 1e7;
+      const { mu, ve } = characteristicSpeeds(m1, m2, r0);
+      const run = (f, tmax) => {
+        const sim = new Simulation({ m1, m2, r0, v0: f * ve, angle: 0 });
+        const d0 = diagnostics(sim); let rmax = r0; const dt = 2 * Math.PI * Math.sqrt(r0 ** 3 / mu) / 2000;
+        while (sim.t < tmax && sim.status === 'ok') { sim.advance(dt); rmax = Math.max(rmax, sim.sep()); }
+        return { d0, rmax, r: sim.sep(), d: diagnostics(sim) };
+      };
+      const lo = run(0.98, 0);
+      const Tlo = lo.d0.T;
+      const lo2 = run(0.98, Tlo * 1.05);
+      const crit = run(1.0, 0);
+      const hi = run(1.02, 40 * Tlo / 5);
+      const okLo = lo.d0.eps < 0 && lo.d0.e < 1 && lo.d0.cls === 'elliptical' && lo2.rmax <= lo.d0.ra * (1 + 1e-4);
+      const okHi = hi.d0.eps > 0 && hi.d0.e > 1 && hi.d0.cls === 'hyperbolic' && hi.r > 20 * r0 && hi.d.vrel > hi.d0.vinf;
+      const eCrit = Math.abs(crit.d0.e - 1);
+      const okCrit = eCrit < 1e-9 && crit.d0.cls === 'parabolic';
+      const meas = Math.max(eCrit, lo2.rmax / lo.d0.ra - 1);
+      add('Escape velocity: bound ↔ unbound transition', okLo && okHi && okCrit && meas < 1e-4, meas, 1e-4,
+        'v = 0.98 v_esc: ε = ' + lo.d0.eps.toExponential(3) + ' J/kg, r_max/r_a = ' + (lo2.rmax / lo.d0.ra).toFixed(6) + ' (' + lo.d0.cls + '); ' +
+        'v = v_esc: |e−1| = ' + eCrit.toExponential(1) + ' (' + crit.d0.cls + '); v = 1.02 v_esc: ε = ' + hi.d0.eps.toExponential(3) + ' J/kg, r/r₀ = ' + (hi.r / r0).toFixed(1) + ' (' + hi.d0.cls + ')');
+    } catch (err) { add('Escape velocity', false, NaN, 1e-4, 'exception: ' + err.message); }
+
+    // ---- 9. RK4 integrator sanity: energy on a circular orbit ----
+    try {
+      const { sim, T } = mk(5.972e24, 7.342e22, 3.844e8, 'circular', 0, 'rk4');
+      const dt = T / 1000; const E0 = sim.E0;
+      for (let i = 0; i < 1000 * 10; i++) sim.advance(dt);
+      const err = Math.abs((diagnostics(sim).E - E0) / E0);
+      add('RK4 integrator: energy error (circular, 10 periods)', err < 1e-8, err, 1e-8, 'Earth–Moon, Δt = T/1000; |ΔE/E₀| at end');
+    } catch (err) { add('RK4 integrator', false, NaN, 1e-8, 'exception: ' + err.message); }
+
+    // ---- 10. Symplectic behaviour: fixed-step Verlet energy error stays bounded (no secular drift) ----
+    try {
+      const m1 = 1.989e30, m2 = 1.898e27, e = 0.85, r0 = 1.2e11, mu = G * (m1 + m2);
+      const v = autoSpeed('elliptical', mu, r0, e, 'peri'), T = elementsFromRel(mu, r0, 0, 0, v).T;
+      const sim = new Simulation({ m1, m2, r0, v0: v, eta: Infinity });
+      const N = 500, dt = T / N; let early = 0, late = 0;
+      for (let i = 0; i < N * 500; i++) {
+        sim.advance(dt);
+        if (i % 5 === 0) { const err = Math.abs((diagnostics(sim).E - sim.E0) / sim.E0); if (i < N * 20) early = Math.max(early, err); else if (i >= N * 400) late = Math.max(late, err); }
+      }
+      const growth = Math.abs(late / early - 1);
+      add('Verlet symplectic: energy error bounded (no drift)', growth < 0.05, growth, 0.05, 'e = 0.85, coarse fixed Δt = T/500, 500 periods; max|ΔE/E₀| periods 0–20 = ' + early.toExponential(3) + ', periods 400–500 = ' + late.toExponential(3) + '; measured = |late/early − 1|');
+    } catch (err) { add('Verlet symplectic', false, NaN, 0.05, 'exception: ' + err.message); }
+
+    const ms = (typeof performance !== 'undefined' ? performance : Date).now() - t0;
+    const npass = res.filter(r => r.pass).length;
+    log('%c[Gravity Lab] Self-tests: ' + npass + '/' + res.length + ' passed (' + ms.toFixed(0) + ' ms)', 'color:#3fd0ff;font-weight:bold');
+    res.forEach((r, i) => log((i + 1) + '. ' + (r.pass ? 'PASS' : 'FAIL') + ' | ' + r.name + ' | measured error = ' + (Number.isFinite(r.measured) ? r.measured.toExponential(3) : r.measured) + ' | tolerance = ' + r.tol.toExponential(1) + ' | ' + r.detail));
+    return { results: res, ms, npass };
+  }
+
+  return {
+    G, C_LIGHT, MASSES, EARTH, CLASS_TOL, gravAcc, initialState, characteristicSpeeds, autoSpeed,
+    elementsFromRel, classify, geoRadius, Simulation, diagnostics, PeriodTracker, SectorRecorder, runSelfTests
+  };
+})();
+if (typeof module !== 'undefined') module.exports = Phys;
+</script>
+
+<!-- =====================================================================
+     SECTION 2 — USER INTERFACE STATE, CONTROLS & EXPERIMENT PRESETS
+     ===================================================================== -->
+<script id="ui-and-rendering">
+'use strict';
+(function () {
+  const { G, EARTH, MASSES } = Phys;
+  const $ = id => document.getElementById(id);
+  const MONO = 'ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace', SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+
+  /* ---------------- 2.1 Formatting helpers (units beside every value) ---------------- */
+  const SUP = { '-': '⁻', '+': '', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+  function sci(x, sig = 4) {
+    if (x === Infinity) return '∞';
+    if (x === -Infinity) return '−∞';
+    if (!Number.isFinite(x)) return '—';
+    if (x === 0) return '0';
+    const ax = Math.abs(x);
+    if (ax >= 1e-2 && ax < 1e5) {
+      const dec = Math.max(0, sig - 1 - Math.floor(Math.log10(ax)));
+      return (x < 0 ? '−' : '') + ax.toFixed(Math.min(dec, 6));
+    }
+    const [m, e] = x.toExponential(sig - 1).split('e');
+    return m.replace('-', '−') + '×10' + e.split('').map(c => SUP[c]).join('');
+  }
+  const U = (x, unit, sig) => sci(x, sig) + (unit ? '<span class="u">' + unit + '</span>' : '');
+  function human(sec) {
+    if (!Number.isFinite(sec)) return '';
+    const a = Math.abs(sec);
+    if (a < 120) return '';
+    if (a < 7200) return ' (' + (sec / 60).toFixed(1) + ' min)';
+    if (a < 172800) return ' (' + (sec / 3600).toFixed(2) + ' h)';
+    if (a < 3.15576e7 * 2) return ' (' + (sec / 86400).toFixed(2) + ' d)';
+    return ' (' + (sec / 3.15576e7).toFixed(2) + ' yr)';
+  }
+  const UT = (sec, sig) => U(sec, 's', sig) + (human(sec) ? '<span class="u">' + human(sec) + '</span>' : '');
+  const plain = html => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const expStr = x => x.toExponential(4).replace('e+', 'e');
+
+  /* ---------------- 2.2 Application state ---------------- */
+  const state = {
+    cfg: { m1: 2e30, m2: 2e30, mode: 'circular', r0: 1.5e11, eEll: 0.5, eHyp: 1.5, startAt: 'peri', v0: 3e4, angle: 0 },
+    playing: false, dtN: 4000, speedLog: 0, method: 'verlet',
+    cam: { mode: 'com', scale: 1e-9, cx: 0, cy: 0 },
+    show: { grid: true, trails: true, vel: true, force: true, com: true, line: true, apsis: true, ellipse: false },
+    trailLen: 2500, earthMode: false, geo: { active: false, dr: 0 }, preset: null,
+    thMag: 20, thDur: 2, kDtDen: 12,
+  };
+  let sim = null, Tref = 1, vScale = 1, fScale = 1, simDebt = 0, lastSubsteps = 0, speedLimited = false;
+  let periodTracker = null, recA = null, recB = null;
+
+  /* ---------------- 2.3 Experiment presets ---------------- */
+  const PRESETS = {
+    A: { name: 'Equal-mass binary', m1: 2e30, m2: 2e30, mode: 'circular', r0: 1.5e11, speedLog: 0, dtN: 4000, earth: false, cam: 'com',
+         desc: 'Two identical 2×10³⁰ kg stars on a circular orbit. Both bodies sit at equal radii r₀/2 from the COM and always have equal and opposite velocities (try the elliptical mode too).' },
+    B: { name: 'Sun–Earth system', m1: MASSES.Sun, m2: MASSES.Earth, mode: 'elliptical', eEll: 0.0167, startAt: 'peri', r0: 1.471e11, speedLog: 0, dtN: 4000, earth: false, cam: 'com',
+         desc: 'Earth starts at perihelion (1.471×10¹¹ m, e = 0.0167). The Sun also moves: it circles the COM at ≈ 450 km — about 0.06 % of its own radius. Zoom deep into the Sun or read |r₁ − R| on the dashboard.' },
+    C: { name: 'Escape-velocity experiment', m1: MASSES.Earth, m2: 1000, mode: 'manual', r0: 1.0e7, vRatio: 0.9, angle: 0, speedLog: 0.2, dtN: 4000, earth: true, cam: 'follow1',
+         desc: 'A 1000 kg probe launched horizontally from r₀ = 10 000 km. Drag the v₀/v_esc slider: below 1 the path is an ellipse, at exactly 1 a parabola, above 1 a hyperbola. Watch the trajectory class and ε change sign.' },
+    D: { name: 'Highly eccentric orbit', m1: MASSES.Sun, m2: 1.898e27, mode: 'elliptical', eEll: 0.85, startAt: 'peri', r0: 1.2e11, speedLog: 0, dtN: 20000, earth: false, cam: 'com',
+         desc: 'A Jupiter-mass body with e = 0.85. Compare the relative speed at periapsis and apoapsis on the dashboard: v_p/v_a = (1+e)/(1−e) ≈ 12.3. Use the Kepler panel to compare swept areas.' },
+    E: { name: 'Earth satellite (LEO)', m1: MASSES.Earth, m2: 420000, mode: 'circular', r0: EARTH.R + 4.2e5, speedLog: 0, dtN: 4000, earth: true, cam: 'follow1',
+         desc: 'An ISS-like 420 t satellite in a circular orbit 420 km above Earth (period ≈ 93 min). Earth is drawn to scale and rotates once per sidereal day.' },
+  };
+
+  /* ---------------- 2.4 Build initial conditions from the configuration ---------------- */
+  function buildIC() {
+    const c = state.cfg;
+    const { mu, vc, ve } = Phys.characteristicSpeeds(c.m1, c.m2, c.r0);
+    let v0, angle = 0, e = null;
+    if (c.mode === 'manual') { v0 = c.v0; angle = c.angle; }
+    else {
+      e = c.mode === 'elliptical' ? c.eEll : c.mode === 'hyperbolic' ? c.eHyp : c.mode === 'parabolic' ? 1 : 0;
+      v0 = Phys.autoSpeed(c.mode, mu, c.r0, e, c.startAt);
+    }
+    const g = angle * Math.PI / 180;
+    const el = Phys.elementsFromRel(mu, c.r0, 0, v0 * Math.sin(g), v0 * Math.cos(g));
+    return { m1: c.m1, m2: c.m2, r0: c.r0, v0, angle, mu, vc, ve, el };
+  }
+
+  function currentDt() { return Tref / state.dtN; }
+  function simRate() { return Tref / 10 * Math.pow(10, state.speedLog); }   // sim seconds per real second (1× ⇒ one reference orbit per 10 s)
+
+  /* (Re)initialise the simulation from the configuration. */
+  function resetSim(fit = true) {
+    const ic = buildIC();
+    Tref = ic.el.bound ? ic.el.T : 2 * Math.PI * Math.sqrt(ic.r0 ** 3 / ic.mu);
+    const rCollide = state.earthMode ? EARTH.R : 1e-4 * ic.r0;
+    const opts = { m1: ic.m1, m2: ic.m2, r0: ic.r0, v0: ic.v0, angle: ic.angle, method: state.method, rCollide };
+    if (!sim) {
+      sim = new Phys.Simulation(opts);
+      periodTracker = new Phys.PeriodTracker(); recA = new Phys.SectorRecorder(); recB = new Phys.SectorRecorder();
+      sim.observers.push(periodTracker, recA, recB);
+      sim.observers.push({ update: onSubstep, reset: () => {} });
+      sim.reset(opts);
+    } else sim.reset(opts);
+    if (state.earthMode && ic.r0 <= EARTH.R) toast('r₀ is inside Earth (R = 6.371×10⁶ m): increase r₀.', 'err');
+    // vector scales (pixels per unit) fixed at reset so arrow lengths are comparable over time
+    const d = Phys.diagnostics(sim);
+    vScale = 70 / Math.max(d.v1, d.v2, d.vrel, 1e-30);
+    fScale = 60 / (G * ic.m1 * ic.m2 / (ic.r0 * ic.r0));
+    trail.clear(); energy.clear(); simDebt = 0; lastTrail = null;
+    icA = ic.el.a; keplerRefA = icA;
+    accAngle = 0; accPrev = Math.atan2(sim.s[3] - sim.s[1], sim.s[2] - sim.s[0]);
+    updateDtLabel();
+    if (fit) autoFit();
+    updateICReadouts(ic);
+    updateDashboard(true);
+    updateStatus();
+  }
+
+  /* ---------------- 2.5 Control panel wiring ---------------- */
+  function syncControls() {
+    const c = state.cfg;
+    $('m1Txt').value = expStr(c.m1); $('m1Sl').value = Math.log10(c.m1);
+    $('m2Txt').value = expStr(c.m2); $('m2Sl').value = Math.log10(c.m2);
+    $('r0Txt').value = expStr(c.r0); $('r0Sl').value = Math.log10(c.r0);
+    $('orbitMode').value = c.mode;
+    $('eEll').value = c.eEll; $('eEllV').textContent = (+c.eEll).toFixed(3);
+    $('eHyp').value = c.eHyp; $('eHypV').textContent = (+c.eHyp).toFixed(2);
+    $('startAt').value = c.startAt;
+    $('angSl').value = c.angle; $('angV').textContent = c.angle + '°';
+    $('eEllBox').style.display = c.mode === 'elliptical' ? '' : 'none';
+    $('eHypBox').style.display = c.mode === 'hyperbolic' ? '' : 'none';
+    $('manBox').style.display = c.mode === 'manual' ? '' : 'none';
+    const { ve } = Phys.characteristicSpeeds(c.m1, c.m2, c.r0);
+    $('v0Txt').value = expStr(c.v0);
+    $('vRatio').value = Math.min(2, c.v0 / ve); $('vRatioV').textContent = (c.v0 / ve).toFixed(3);
+    $('speedSl').value = state.speedLog; $('speedV').textContent = Math.pow(10, state.speedLog).toFixed(2) + '×';
+    $('dtSl').value = Math.log10(state.dtN);
+    $('methodSel').value = state.method;
+    $('camSel').value = state.cam.mode;
+    $('tgEarth').checked = state.earthMode;
+    $('tgEllipse').checked = $('tgEllipse2').checked = state.show.ellipse;
+    $('geoDr').value = state.geo.dr; $('geoDrV').textContent = (state.geo.dr >= 0 ? '+' : '') + state.geo.dr + ' km';
+    document.querySelectorAll('.preset').forEach(b => b.classList.toggle('active', b.dataset.preset === state.preset));
+    $('presetName').textContent = state.geo.active ? 'GEO experiment' : (state.preset ? PRESETS[state.preset].name : 'custom');
+    updateDtLabel();
+  }
+  function updateDtLabel() { $('dtV').textContent = sci(currentDt(), 3) + ' s (' + state.dtN.toFixed(0) + '/orbit)'; }
+
+  function updateICReadouts(ic) {
+    $('roMu').innerHTML = U(ic.mu, 'm³/s²');
+    $('roVc').innerHTML = U(ic.vc, 'm/s');
+    $('roVe').innerHTML = U(ic.ve, 'm/s');
+    $('roV0').innerHTML = U(ic.v0, 'm/s') + ' <span class="u">(' + (ic.v0 / ic.ve).toFixed(3) + ' v_esc)</span>';
+    $('roE').innerHTML = sci(ic.el.e, 4) + ' <span class="u">' + Phys.classify(ic.el.e) + '</span>';
+    let w = '';
+    const rc = state.earthMode ? EARTH.R : 1e-4 * ic.r0;
+    if (ic.v0 === 0) w = 'v₀ = 0: radial free fall — the bodies will collide.';
+    else if (state.earthMode && ic.r0 <= EARTH.R) w = 'r₀ is inside the Earth (R = 6.371×10⁶ m).';
+    else if (ic.el.rp < rc) w = state.earthMode ? 'Warning: this trajectory intersects Earth\'s surface (r_p < R).' : 'Warning: periapsis lies inside the collision radius.';
+    $('icWarn').textContent = w;
+  }
+
+  function changed(clearPreset = true) {
+    if (clearPreset) { state.preset = null; state.geo.active = false; }
+    syncControls(); resetSim(true);
+  }
+
+  function parsePos(el) {
+    const v = parseFloat(el.value);
+    const ok = Number.isFinite(v) && v > 0;
+    el.classList.toggle('bad', !ok);
+    return ok ? v : null;
+  }
+
+  function wireControls() {
+    // masses
+    [1, 2].forEach(k => {
+      $('m' + k + 'Txt').addEventListener('change', e => { const v = parsePos(e.target); if (v) { state.cfg['m' + k] = v; changed(); } });
+      $('m' + k + 'Sl').addEventListener('input', e => { state.cfg['m' + k] = Math.pow(10, +e.target.value); changed(); });
+    });
+    document.querySelectorAll('[data-mass]').forEach(b => b.addEventListener('click', () => { state.cfg['m' + b.dataset.m] = MASSES[b.dataset.mass]; changed(); }));
+    // orbit
+    $('orbitMode').addEventListener('change', e => {
+      const ic = buildIC(); state.cfg.mode = e.target.value;
+      if (state.cfg.mode === 'manual') { state.cfg.v0 = ic.v0; state.cfg.angle = ic.angle; }
+      changed();
+    });
+    $('r0Txt').addEventListener('change', e => { const v = parsePos(e.target); if (v) { state.cfg.r0 = v; changed(); } });
+    $('r0Sl').addEventListener('input', e => { state.cfg.r0 = Math.pow(10, +e.target.value); changed(); });
+    $('eEll').addEventListener('input', e => { state.cfg.eEll = +e.target.value; changed(); });
+    $('eHyp').addEventListener('input', e => { state.cfg.eHyp = +e.target.value; changed(); });
+    $('startAt').addEventListener('change', e => { state.cfg.startAt = e.target.value; changed(); });
+    $('v0Txt').addEventListener('change', e => { const v = parseFloat(e.target.value); if (Number.isFinite(v) && v >= 0) { state.cfg.v0 = v; e.target.classList.remove('bad'); changed(); } else e.target.classList.add('bad'); });
+    $('vRatio').addEventListener('input', e => { const { ve } = Phys.characteristicSpeeds(state.cfg.m1, state.cfg.m2, state.cfg.r0); state.cfg.v0 = +e.target.value * ve; changed(false); });
+    $('angSl').addEventListener('input', e => { state.cfg.angle = +e.target.value; changed(false); });
+    // presets
+    document.querySelectorAll('.preset').forEach(b => b.addEventListener('click', () => loadPreset(b.dataset.preset)));
+    // display toggles
+    const tg = { tgGrid: 'grid', tgTrails: 'trails', tgVel: 'vel', tgForce: 'force', tgCom: 'com', tgLine: 'line', tgApsis: 'apsis' };
+    Object.entries(tg).forEach(([id, k]) => $(id).addEventListener('change', e => { state.show[k] = e.target.checked; }));
+    [$('tgEllipse'), $('tgEllipse2')].forEach(el => el.addEventListener('change', e => { state.show.ellipse = e.target.checked; $('tgEllipse').checked = $('tgEllipse2').checked = e.target.checked; }));
+    $('trailLen').addEventListener('input', e => { state.trailLen = +e.target.value; $('trailLenV').textContent = state.trailLen; });
+    // simulation controls
+    $('btnPlay').addEventListener('click', togglePlay);
+    $('btnStep').addEventListener('click', () => { state.playing = false; if (sim.status === 'ok') { sim.advance(currentDt()); sampleAfterStep(); } updatePlayBtn(); updateDashboard(true); updateStatus(); });
+    $('btnReset').addEventListener('click', () => { resetSim(false); });
+    $('speedSl').addEventListener('input', e => { state.speedLog = +e.target.value; $('speedV').textContent = Math.pow(10, state.speedLog).toFixed(2) + '×'; });
+    $('methodSel').addEventListener('change', e => { state.method = e.target.value; sim.setMethod(state.method); updateStatus(); });
+    $('dtSl').addEventListener('input', e => { state.dtN = Math.round(Math.pow(10, +e.target.value)); updateDtLabel(); });
+    // camera
+    $('camSel').addEventListener('change', e => { state.cam.mode = e.target.value; autoFit(); });
+    $('btnFit').addEventListener('click', autoFit);
+    $('btnZin').addEventListener('click', () => zoomAt(cv.clientWidth / 2, cv.clientHeight / 2, 1.4));
+    $('btnZout').addEventListener('click', () => zoomAt(cv.clientWidth / 2, cv.clientHeight / 2, 1 / 1.4));
+    // thrust
+    $('thMag').addEventListener('input', e => { state.thMag = +e.target.value; $('thMagV').textContent = state.thMag + ' %'; });
+    $('thDur').addEventListener('input', e => { state.thDur = +e.target.value; $('thDurV').textContent = state.thDur + ' %T'; });
+    $('btnThrust').addEventListener('click', fireThrust);
+    // comparison
+    $('btnCmp').addEventListener('click', runComparison);
+    // Kepler
+    $('kDt').addEventListener('input', e => { state.kDtDen = +e.target.value; $('kDtV').textContent = 'T / ' + state.kDtDen; });
+    $('kMarkA').addEventListener('click', () => keplerStart(recA, 'now'));
+    $('kMarkB').addEventListener('click', () => keplerStart(recB, 'now'));
+    $('kAuto').addEventListener('click', () => { keplerStart(recA, 'peri'); keplerStart(recB, 'apo'); if (!state.playing) togglePlay(); });
+    $('kClear').addEventListener('click', () => { recA.clear(); recB.clear(); });
+    // Earth / GEO
+    $('btnGeo').addEventListener('click', () => loadGeo());
+    $('tgEarth').addEventListener('change', e => { state.earthMode = e.target.checked; resetSim(true); });
+    $('geoDr').addEventListener('input', e => { state.geo.dr = +e.target.value; $('geoDrV').textContent = (state.geo.dr >= 0 ? '+' : '') + state.geo.dr + ' km'; if (state.geo.active) loadGeo(true); });
+    // tests
+    $('btnTests').addEventListener('click', runTestsUI);
+    // keyboard
+    window.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+      else if (e.key === 'r' || e.key === 'R') resetSim(false);
+      else if (e.key === 'f' || e.key === 'F') autoFit();
+      else if (e.key === '.') $('btnStep').click();
+    });
+    // tooltips
+    const tip = $('tooltip');
+    document.addEventListener('mouseover', e => { const t = e.target.closest('[data-tip]'); if (t) { tip.textContent = t.dataset.tip; tip.classList.add('show'); } });
+    document.addEventListener('mousemove', e => { if (tip.classList.contains('show')) { const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + 'px'; tip.style.top = (e.clientY + 16) + 'px'; } });
+    document.addEventListener('mouseout', e => { const t = e.target.closest('[data-tip]'); if (t && !t.contains(e.relatedTarget)) tip.classList.remove('show'); });
+  }
+
+  function loadPreset(k) {
+    const p = PRESETS[k];
+    const c = state.cfg;
+    c.m1 = p.m1; c.m2 = p.m2; c.mode = p.mode; c.r0 = p.r0;
+    if (p.eEll != null) c.eEll = p.eEll;
+    if (p.startAt) c.startAt = p.startAt;
+    if (p.mode === 'manual') { const { ve } = Phys.characteristicSpeeds(p.m1, p.m2, p.r0); c.v0 = p.vRatio * ve; c.angle = p.angle || 0; }
+    state.speedLog = p.speedLog; state.dtN = p.dtN; state.earthMode = p.earth; state.cam.mode = p.cam;
+    state.preset = k; state.geo.active = false; state.geo.dr = 0;
+    recA.clear(); recB.clear();
+    $('presetDesc').textContent = p.desc;
+    syncControls(); resetSim(true);
+    state.playing = true; updatePlayBtn();
+  }
+
+  /* GEO experiment: circular equatorial orbit of radius r_geo + Δr about the rotating Earth. */
+  function loadGeo(keepPlaying) {
+    const c = state.cfg;
+    c.m1 = EARTH.M; c.m2 = 1000; c.mode = 'circular';
+    c.r0 = Phys.geoRadius(EARTH.M, EARTH.Tsid) + state.geo.dr * 1e3;
+    state.earthMode = true; state.cam.mode = 'follow1'; state.preset = null; state.geo.active = true;
+    state.dtN = 4000; if (!keepPlaying) state.speedLog = 0;
+    $('presetDesc').textContent = 'GEO: a 1000 kg satellite on a circular equatorial orbit. The orange marker is a ground station fixed to the rotating Earth, directly below the satellite at t = 0. Adjust Δr to see eastward/westward drift.';
+    syncControls(); resetSim(true);
+    state.playing = true; updatePlayBtn();
+  }
+
+  function togglePlay() {
+    if (sim.status !== 'ok') { resetSim(false); }
+    state.playing = !state.playing; updatePlayBtn();
+  }
+  function updatePlayBtn() { $('btnPlay').textContent = state.playing ? '❚❚ Pause' : '▶ Play'; }
+
+  function fireThrust() {
+    if (sim.status !== 'ok') return;
+    if (sim.thrust && sim.thrust.left > 0) return;
+    const r = sim.sep();
+    const gLocal = G * sim.m1 / (r * r);
+    const a = state.thMag / 100 * gLocal;
+    const dur = state.thDur / 100 * Tref;
+    sim.fireThrust(a, $('thDir').value, dur);
+    periodTracker.reset(sim);
+    toast('Thrust: a = ' + plain(U(a, 'm/s²', 3)) + ' for ' + plain(U(dur, 's', 3)) + ' (Δv ≈ ' + plain(U(a * dur, 'm/s', 3)) + ')', '');
+    if (!state.playing) { state.playing = true; updatePlayBtn(); }
+  }
+
+  function keplerStart(rec, trig) {
+    const d = Phys.diagnostics(sim);
+    const T = d.bound ? d.T : Tref;
+    const dur = T / state.kDtDen;
+    if (trig === 'now') rec.begin(sim, dur); else rec.arm(trig, dur);
+    if (!d.bound) toast('Trajectory is unbound: Kepler II still holds (dA/dt = h/2), but there is no period.', 'warn');
+  }
+
+  /* ---------------- 2.6 Toast & status ---------------- */
+  let toastTimer = null;
+  function toast(msg, kind) {
+    const t = $('toast'); t.textContent = msg; t.className = 'toast show ' + (kind || '');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3800);
+  }
+  function updateStatus() {
+    $('stT').innerHTML = UT(sim.t);
+    $('stSteps').textContent = sim.steps.toLocaleString();
+    $('stSub').textContent = lastSubsteps + (speedLimited ? ' (capped)' : '') + (sim.lastSplit > 1 ? ' ×' + sim.lastSplit + ' split' : '');
+    $('stDt').innerHTML = U(currentDt(), 's', 3) + ' · ' + (sim.method === 'rk4' ? 'RK4' : 'Verlet');
+    $('stStatus').textContent = sim.status === 'ok' ? (state.playing ? 'running' : 'paused') + (sim.relativistic ? ' · v > 0.1c (Newtonian model invalid)' : '') : sim.status;
+  }
+
+  /* ============================================================
+     SECTION 3 — DATA BUFFERS (trails, energy history)
+     ============================================================ */
+  /* Ring buffer of trail samples: t, x1, y1, x2, y2, Rx, Ry (inertial coordinates). */
+  const trail = {
+    cap: 6000, n: 0, head: 0, buf: new Float64Array(6000 * 7),
+    clear() { this.n = 0; this.head = 0; },
+    push(t, s, Rx, Ry) {
+      const o = this.head * 7, b = this.buf;
+      b[o] = t; b[o + 1] = s[0]; b[o + 2] = s[1]; b[o + 3] = s[2]; b[o + 4] = s[3]; b[o + 5] = Rx; b[o + 6] = Ry;
+      this.head = (this.head + 1) % this.cap; if (this.n < this.cap) this.n++;
+    },
+    get(i) { return ((this.head - this.n + i) % this.cap + this.cap) % this.cap * 7; }   // i-th oldest
+  };
+  let lastTrail = null;
+  function maybeTrail() {
+    const s = sim.s, rx = s[2] - s[0], ry = s[3] - s[1];
+    const th = Math.atan2(ry, rx), r = Math.hypot(rx, ry);
+    const M = sim.M, Rx = (sim.m1 * s[0] + sim.m2 * s[2]) / M, Ry = (sim.m1 * s[1] + sim.m2 * s[3]) / M;
+    if (!lastTrail) { trail.push(sim.t, s, Rx, Ry); lastTrail = { th, r, t: sim.t }; return; }
+    let dth = th - lastTrail.th; if (dth > Math.PI) dth -= 2 * Math.PI; else if (dth < -Math.PI) dth += 2 * Math.PI;
+    if (Math.abs(dth) > 0.01 || Math.abs(r - lastTrail.r) > 0.01 * lastTrail.r || sim.t - lastTrail.t > Tref / 300) {
+      trail.push(sim.t, s, Rx, Ry); lastTrail = { th, r, t: sim.t };
+    }
+  }
+
+  /* Energy history with automatic decimation (keeps the whole run within a fixed buffer). */
+  const energy = {
+    cap: 1600, t: [], ke: [], pe: [], e: [], dtS: 1, next: 0,
+    clear() { this.t = []; this.ke = []; this.pe = []; this.e = []; this.dtS = Tref / 120; this.next = 0; },
+    sample() {
+      if (sim.t < this.next) return;
+      const s = sim.s;
+      const KE = 0.5 * sim.m1 * (s[4] * s[4] + s[5] * s[5]) + 0.5 * sim.m2 * (s[6] * s[6] + s[7] * s[7]);
+      const PE = -G * sim.m1 * sim.m2 / sim.sep();
+      this.t.push(sim.t); this.ke.push(KE); this.pe.push(PE); this.e.push(KE + PE);
+      this.next = sim.t + this.dtS;
+      if (this.t.length >= this.cap) {      // decimate: keep every other sample, halve the sampling rate
+        const f = a => a.filter((_, i) => i % 2 === 0);
+        this.t = f(this.t); this.ke = f(this.ke); this.pe = f(this.pe); this.e = f(this.e); this.dtS *= 2;
+      }
+    }
+  };
+
+  // called by the simulation after every integration sub-step (lightweight)
+  function onSubstep() { /* reserved hook: trail & energy sampling done per frame-step below */ }
+  function sampleAfterStep() { trackAngle(); maybeTrail(); energy.sample(); }
+
+  /* ============================================================
+     SECTION 4 — VISUALIZATION (Canvas 2D)
+     ============================================================ */
+  const cv = $('simCanvas'), ctx = cv.getContext('2d');
+  let W = 0, H = 0, DPR = 1;
+  function resizeCanvas() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const r = cv.getBoundingClientRect(); W = r.width; H = r.height;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    for (const c of [energyCv, cmpCv]) { const b = c.getBoundingClientRect(); c.width = Math.round(b.width * DPR); c.height = Math.round(b.height * DPR); }
+    drawComparison();
+  }
+
+  /* Frame reference point: positions are displayed relative to (refX, refY) at the same instant. */
+  function frameRef(x1, y1, Rx, Ry) {
+    if (state.cam.mode === 'com') return [Rx, Ry];
+    if (state.cam.mode === 'follow1') return [x1, y1];
+    return [0, 0];                           // fixed inertial frame (origin = initial COM)
+  }
+  const sx = x => W / 2 + (x - state.cam.cx) * state.cam.scale;
+  const sy = y => H / 2 - (y - state.cam.cy) * state.cam.scale;
+
+  function autoFit() {
+    if (!sim) return;
+    const d = Phys.diagnostics(sim);
+    const k1 = sim.m2 / sim.M, k2 = sim.m1 / sim.M;
+    let ext;
+    if (state.cam.mode === 'follow1') ext = d.bound ? d.ra : 3 * d.r;
+    else ext = d.bound ? Math.max(k1, k2) * d.ra : 3 * Math.max(k1, k2) * d.r;
+    if (state.earthMode) ext = Math.max(ext, EARTH.R * 1.3);
+    if (!(ext > 0)) ext = d.r;
+    state.cam.scale = Math.min(W, H) * 0.44 / ext;
+    state.cam.cx = 0; state.cam.cy = 0;
+    if (state.cam.mode === 'inertial') { state.cam.cx = d.Rx; state.cam.cy = d.Ry; }
+  }
+  function zoomAt(mx, my, f) {
+    const c = state.cam;
+    const wx = c.cx + (mx - W / 2) / c.scale, wy = c.cy - (my - H / 2) / c.scale;
+    c.scale = Math.max(1e-20, Math.min(1e6, c.scale * f));
+    c.cx = wx - (mx - W / 2) / c.scale; c.cy = wy + (my - H / 2) / c.scale;
+  }
+  function wireCanvas() {
+    cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+    const ptrs = new Map(); let pinch0 = null;
+    cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); cv.classList.add('drag'); });
+    cv.addEventListener('pointermove', e => {
+      if (!ptrs.has(e.pointerId)) return;
+      const [px, py] = ptrs.get(e.pointerId);
+      if (ptrs.size === 1) { state.cam.cx -= (e.clientX - px) / state.cam.scale; state.cam.cy += (e.clientY - py) / state.cam.scale; }
+      ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+      if (ptrs.size === 2) {
+        const [a, b] = [...ptrs.values()]; const dist = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (pinch0) { const r = cv.getBoundingClientRect(); zoomAt((a[0] + b[0]) / 2 - r.left, (a[1] + b[1]) / 2 - r.top, dist / pinch0); }
+        pinch0 = dist;
+      }
+    });
+    const up = e => { ptrs.delete(e.pointerId); pinch0 = null; if (!ptrs.size) cv.classList.remove('drag'); };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    cv.addEventListener('dblclick', autoFit);
+  }
+
+  /* Body appearance: radius on a log scale of mass (visual only). */
+  function visRadius(m) {
+    const mmin = Math.min(sim.m1, sim.m2);
+    return Math.max(5, Math.min(22, 7 + 2.4 * Math.log10(m / mmin)));
+  }
+
+  function niceStep(raw) {
+    const p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+    return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p;
+  }
+
+  function drawGrid() {
+    const c = state.cam, step = niceStep(90 / c.scale);
+    const x0 = c.cx - W / 2 / c.scale, x1 = c.cx + W / 2 / c.scale, y0 = c.cy - H / 2 / c.scale, y1 = c.cy + H / 2 / c.scale;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    // integer-indexed loops: robust even when step is far below the float spacing of the coordinates
+    for (let i = Math.ceil(x0 / step), c = 0; i * step <= x1 && c < 400; i++, c++) { const X = Math.round(sx(i * step)) + 0.5; ctx.moveTo(X, 0); ctx.lineTo(X, H); }
+    for (let i = Math.ceil(y0 / step), c = 0; i * step <= y1 && c < 400; i++, c++) { const Y = Math.round(sy(i * step)) + 0.5; ctx.moveTo(0, Y); ctx.lineTo(W, Y); }
+    ctx.strokeStyle = 'rgba(70,110,170,0.13)'; ctx.stroke();
+    // axes through the frame origin
+    ctx.beginPath(); ctx.moveTo(sx(0), 0); ctx.lineTo(sx(0), H); ctx.moveTo(0, sy(0)); ctx.lineTo(W, sy(0));
+    ctx.strokeStyle = 'rgba(90,140,210,0.22)'; ctx.stroke();
+    return step;
+  }
+
+  function drawScaleBar(step) {
+    const len = step * state.cam.scale, x = 16, y = H - 18;
+    ctx.strokeStyle = '#8fb3e6'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x, y - 4); ctx.lineTo(x, y); ctx.lineTo(x + len, y); ctx.lineTo(x + len, y - 4); ctx.stroke();
+    ctx.fillStyle = '#8fb3e6'; ctx.font = '11px ' + MONO;
+    ctx.fillText(plain(U(step, 'm', 2)) + (state.show.grid ? '  (grid spacing)' : ''), x + len + 8, y + 3);
+  }
+
+  function arrow(x, y, dx, dy, color, width = 2, maxLen = 240) {
+    let L = Math.hypot(dx, dy);
+    if (L < 2) return;
+    if (L > maxLen) { dx *= maxLen / L; dy *= maxLen / L; L = maxLen; }
+    const ux = dx / L, uy = dy / L, hs = Math.min(9, 0.35 * L + 3);
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = width;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx - ux * hs * 0.8, y + dy - uy * hs * 0.8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + dx, y + dy);
+    ctx.lineTo(x + dx - ux * hs - uy * hs * 0.5, y + dy - uy * hs + ux * hs * 0.5);
+    ctx.lineTo(x + dx - ux * hs + uy * hs * 0.5, y + dy - uy * hs - ux * hs * 0.5);
+    ctx.closePath(); ctx.fill();
+  }
+
+  function drawTrails() {
+    const N = Math.min(trail.n, state.trailLen);
+    if (N < 2) return;
+    const b = trail.buf, start = trail.n - N;
+    const chunks = 12, per = Math.ceil(N / chunks);
+    const bodies = state.cam.mode === 'follow1' ? [2] : [1, 2];
+    for (const body of bodies) {
+      const xi = body === 1 ? 1 : 3, col = body === 1 ? '63,208,255' : '255,181,71';
+      for (let c = 0; c < chunks; c++) {
+        const i0 = start + c * per, i1 = Math.min(start + (c + 1) * per + 1, trail.n);
+        if (i1 - i0 < 2) continue;
+        ctx.beginPath();
+        for (let i = i0; i < i1; i++) {
+          const o = trail.get(i);
+          const [rx, ry] = frameRef(b[o + 1], b[o + 2], b[o + 5], b[o + 6]);
+          const X = sx(b[o + xi] - rx), Y = sy(b[o + xi + 1] - ry);
+          i === i0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y);
+        }
+        ctx.strokeStyle = 'rgba(' + col + ',' + (0.08 + 0.72 * (c + 1) / chunks).toFixed(3) + ')';
+        ctx.lineWidth = 1.6; ctx.stroke();
+      }
+    }
+  }
+
+  // continent outlines in Earth-fixed polar coordinates [angle (deg), radius fraction]
+  const CONTINENTS = [
+    [[10, .95], [25, .82], [42, .9], [55, .7], [40, .55], [22, .6], [5, .72]],
+    [[95, .9], [118, .92], [135, .78], [128, .55], [105, .45], [90, .62]],
+    [[175, .88], [200, .95], [222, .85], [215, .66], [190, .6], [172, .7]],
+    [[255, .7], [280, .92], [300, .86], [292, .62], [268, .48]],
+    [[330, .45], [350, .5], [356, .3], [335, .22]],
+    [[150, .3], [175, .25], [168, .12], [148, .15]],
+  ];
+  function drawEarth(X, Y, theta) {
+    const Rp = Math.max(6, EARTH.R * state.cam.scale);
+    const g = ctx.createRadialGradient(X - Rp * 0.3, Y - Rp * 0.3, Rp * 0.1, X, Y, Rp);
+    g.addColorStop(0, '#2f7fd8'); g.addColorStop(1, '#0d3a78');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(X, Y, Rp, 0, 2 * Math.PI); ctx.fill();
+    if (Rp > 10) {
+      ctx.fillStyle = 'rgba(80,190,120,0.85)';
+      for (const poly of CONTINENTS) {
+        ctx.beginPath();
+        poly.forEach(([a, f], i) => { const ang = a * Math.PI / 180 + theta; const px = X + Rp * f * Math.cos(ang), py = Y - Rp * f * Math.sin(ang); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(230,240,255,0.8)'; ctx.beginPath(); ctx.arc(X, Y, Rp * 0.1, 0, 2 * Math.PI); ctx.fill();   // north polar cap
+    }
+    ctx.strokeStyle = 'rgba(160,210,255,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(X, Y, Rp + 1.5, 0, 2 * Math.PI); ctx.stroke();
+    // ground station (fixed in the rotating Earth frame, at longitude 0 = satellite's initial longitude)
+    const gx = X + Rp * Math.cos(theta), gy = Y - Rp * Math.sin(theta);
+    ctx.save(); ctx.translate(gx, gy); ctx.rotate(-theta);
+    ctx.fillStyle = '#ff9d3c'; ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-2, -6); ctx.lineTo(-2, 6); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    if (state.geo.active || state.preset === 'E') {   // local vertical line through the station
+      ctx.setLineDash([4, 6]); ctx.strokeStyle = 'rgba(255,157,60,0.55)'; ctx.lineWidth = 1;
+      const Lr = Math.max(Rp * 2, (sim.sep() * 1.15) * state.cam.scale);
+      ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(X + Lr * Math.cos(theta), Y - Lr * Math.sin(theta)); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+
+  function drawBody(X, Y, m, color, glow, label) {
+    const R = visRadius(m);
+    const g = ctx.createRadialGradient(X - R * 0.35, Y - R * 0.35, R * 0.1, X, Y, R);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.25, color); g.addColorStop(1, glow);
+    ctx.shadowColor = color; ctx.shadowBlur = 18;
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(X, Y, R, 0, 2 * Math.PI); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = color; ctx.font = '600 11px ' + SANS;
+    ctx.fillText(label, X + R + 4, Y - R - 2);
+  }
+
+  function drawComMarker(X, Y) {
+    const r = 8;
+    ctx.lineWidth = 1.3; ctx.strokeStyle = '#e8f0ff';
+    ctx.beginPath(); ctx.arc(X, Y, r, 0, 2 * Math.PI); ctx.stroke();
+    ctx.fillStyle = '#e8f0ff';
+    ctx.beginPath(); ctx.moveTo(X, Y); ctx.arc(X, Y, r, -Math.PI / 2, 0); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(X, Y); ctx.arc(X, Y, r, Math.PI / 2, Math.PI); ctx.closePath(); ctx.fill();
+    ctx.font = '10px sans-serif'; ctx.fillText('COM', X + 11, Y + 12);
+  }
+
+  function marker(X, Y, color, txt) {
+    ctx.save(); ctx.translate(X, Y); ctx.rotate(Math.PI / 4);
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.strokeRect(-4, -4, 8, 8); ctx.restore();
+    ctx.fillStyle = color; ctx.font = '10px sans-serif'; ctx.fillText(txt, X + 7, Y - 6);
+  }
+
+  /* Focus/scale for orbit geometry in the current frame:
+     COM / inertial frames: body orbits are ellipses with a focus at the COM, scaled by m₂/M and m₁/M.
+     Follow-body-1 frame: the relative orbit with body 1 at the focus. */
+  function orbitGeometry(d, fx, fy) {
+    const out = [];
+    if (state.cam.mode === 'follow1') out.push({ F: [fx, fy], k: 1, col: '#ffb547', tag: '' });
+    else {
+      out.push({ F: [fx, fy], k: sim.m1 / sim.M, col: '#ffb547', tag: '₂' });
+      out.push({ F: [fx, fy], k: -sim.m2 / sim.M, col: '#3fd0ff', tag: '₁' });
+    }
+    return out;
+  }
+
+  function render() {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.fillStyle = '#071226'; ctx.fillRect(0, 0, W, H);
+    const s = sim.s, d = Phys.diagnostics(sim);
+    const [rx, ry] = frameRef(s[0], s[1], d.Rx, d.Ry);
+    const X1 = sx(s[0] - rx), Y1 = sy(s[1] - ry), X2 = sx(s[2] - rx), Y2 = sy(s[3] - ry);
+    const Xc = sx(d.Rx - rx), Yc = sy(d.Ry - ry);
+    const focus = state.cam.mode === 'follow1' ? [s[0] - rx, s[1] - ry] : [d.Rx - rx, d.Ry - ry];
+    const step = state.show.grid ? drawGrid() : niceStep(90 / state.cam.scale);
+
+    // Kepler II sectors (relative-orbit vectors scaled into the current frame)
+    const geoms = orbitGeometry(d, focus[0], focus[1]);
+    const kMain = geoms[0].k;
+    for (const [rec, col] of [[recA, 'rgba(255,181,71,'], [recB, 'rgba(63,208,255,']]) {
+      if (rec.pts.length < 2) continue;
+      ctx.beginPath(); ctx.moveTo(sx(focus[0]), sy(focus[1]));
+      for (const [px, py] of rec.pts) ctx.lineTo(sx(focus[0] + kMain * px), sy(focus[1] + kMain * py));
+      if (rec.state === 'rec') ctx.lineTo(sx(focus[0] + kMain * d.rx), sy(focus[1] + kMain * d.ry));
+      ctx.closePath(); ctx.fillStyle = col + '0.28)'; ctx.fill(); ctx.strokeStyle = col + '0.8)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+
+    // analytic Kepler ellipse & foci
+    const eHatOK = d.e > Phys.CLASS_TOL.circular;
+    const ux = eHatOK ? d.ex / d.e : 1, uy = eHatOK ? d.ey / d.e : 0;
+    if (state.show.ellipse && d.bound && d.e < 0.995) {
+      const b = d.a * Math.sqrt(1 - d.e * d.e);
+      for (const g of geoms) {
+        const k = g.k, ak = Math.abs(k);
+        if (ak * d.a * state.cam.scale < 3) continue;
+        const sg = Math.sign(k);
+        const Cx = g.F[0] - k * d.a * d.e * ux, Cy = g.F[1] - k * d.a * d.e * uy;
+        ctx.beginPath();
+        for (let i = 0; i <= 180; i++) {
+          const th = i / 180 * 2 * Math.PI;
+          const px = Cx + sg * ak * (d.a * Math.cos(th) * ux - b * Math.sin(th) * uy);
+          const py = Cy + sg * ak * (d.a * Math.cos(th) * uy + b * Math.sin(th) * ux);
+          i ? ctx.lineTo(sx(px), sy(py)) : ctx.moveTo(sx(px), sy(py));
+        }
+        ctx.setLineDash([6, 5]); ctx.strokeStyle = g.col; ctx.globalAlpha = 0.6; ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+        if (!eHatOK) continue;            // circle: both foci coincide with the centre
+        // centre, foci, major axis
+        const F2x = g.F[0] - 2 * k * d.a * d.e * ux, F2y = g.F[1] - 2 * k * d.a * d.e * uy;
+        ctx.strokeStyle = 'rgba(200,215,240,0.25)'; ctx.beginPath();
+        ctx.moveTo(sx(Cx + k * d.a * ux), sy(Cy + k * d.a * uy)); ctx.lineTo(sx(Cx - k * d.a * ux), sy(Cy - k * d.a * uy)); ctx.stroke();
+        ctx.fillStyle = g.col;
+        ctx.beginPath(); ctx.arc(sx(F2x), sy(F2y), 3.5, 0, 2 * Math.PI); ctx.fill();
+        ctx.font = '10px sans-serif'; ctx.fillText('F₂' + (g.tag ? ' (' + g.tag + ')' : '') + ' empty focus', sx(F2x) + 6, sy(F2y) + 12);
+        ctx.strokeStyle = g.col; ctx.beginPath(); ctx.arc(sx(Cx), sy(Cy), 2.5, 0, 2 * Math.PI); ctx.stroke();
+      }
+      ctx.fillStyle = '#e8f0ff'; ctx.font = '10px sans-serif';
+      if (eHatOK) ctx.fillText('F₁ = ' + (state.cam.mode === 'follow1' ? 'body 1' : 'COM') + ' (occupied focus)', sx(focus[0]) + 12, sy(focus[1]) - 22);
+    }
+
+    if (state.show.trails) drawTrails();
+
+    // peri/apoapsis markers
+    if (state.show.apsis && eHatOK) {
+      for (const g of geoms) {
+        const k = g.k;
+        if (Math.abs(k) * d.rp * state.cam.scale < 2) continue;
+        marker(sx(g.F[0] + k * d.rp * ux), sy(g.F[1] + k * d.rp * uy), g.col, 'P' + g.tag);
+        if (d.bound) marker(sx(g.F[0] - k * d.ra * ux), sy(g.F[1] - k * d.ra * uy), g.col, 'A' + g.tag);
+      }
+    }
+
+    // separation line with label
+    if (state.show.line) {
+      ctx.setLineDash([3, 5]); ctx.strokeStyle = 'rgba(200,215,240,0.45)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(X1, Y1); ctx.lineTo(X2, Y2); ctx.stroke(); ctx.setLineDash([]);
+      const mx = (X1 + X2) / 2, my = (Y1 + Y2) / 2;
+      const txt = 'r = ' + plain(U(d.r, 'm'));
+      ctx.font = '11px ' + MONO;
+      const tw = ctx.measureText(txt).width;
+      ctx.fillStyle = 'rgba(7,18,38,0.8)'; ctx.fillRect(mx - tw / 2 - 4, my - 18, tw + 8, 15);
+      ctx.fillStyle = '#c8d7ef'; ctx.fillText(txt, mx - tw / 2, my - 7);
+    }
+
+    // bodies
+    const theta = 2 * Math.PI / EARTH.Tsid * sim.t;    // Earth's rotation angle (sidereal)
+    if (state.earthMode) drawEarth(X1, Y1, theta);
+    else drawBody(X1, Y1, sim.m1, '#3fd0ff', 'rgba(20,90,160,0.9)', 'm₁');
+    drawBody(X2, Y2, sim.m2, '#ffb547', 'rgba(150,80,10,0.9)', 'm₂');
+    if (state.earthMode) { ctx.fillStyle = '#7fc8ff'; ctx.font = '600 11px sans-serif'; ctx.fillText('Earth', X1 + Math.max(6, EARTH.R * state.cam.scale) + 4, Y1 + 4); }
+
+    // thrust flame
+    if (sim.thrust && sim.thrust.left > 0) {
+      sim.thrustAccel(s, tmp2);
+      const n = Math.hypot(tmp2[0], tmp2[1]) || 1;
+      arrow(X2, Y2, -tmp2[0] / n * 26, tmp2[1] / n * 26, '#ff6a3d', 4, 40);
+    }
+
+    // velocity vectors (relative to the current frame)
+    if (state.show.vel) {
+      let fvx = 0, fvy = 0;
+      if (state.cam.mode === 'com') { fvx = d.Vx; fvy = d.Vy; } else if (state.cam.mode === 'follow1') { fvx = s[4]; fvy = s[5]; }
+      if (state.cam.mode !== 'follow1') arrow(X1, Y1, (s[4] - fvx) * vScale, -(s[5] - fvy) * vScale, '#9be8ff');
+      arrow(X2, Y2, (s[6] - fvx) * vScale, -(s[7] - fvy) * vScale, '#ffd59a');
+    }
+    // gravitational force vectors (equal and opposite)
+    if (state.show.force) {
+      const F = G * sim.m1 * sim.m2 / (d.r * d.r), ex = d.rx / d.r, ey = d.ry / d.r;
+      arrow(X1, Y1, F * ex * fScale, -F * ey * fScale, '#5ef0b8', 2.2, 200);
+      arrow(X2, Y2, -F * ex * fScale, F * ey * fScale, '#ff7a7a', 2.2, 200);
+    }
+    if (state.show.com) drawComMarker(Xc, Yc);
+
+    drawScaleBar(step);
+    drawHUD(d);
+  }
+  const tmp2 = new Float64Array(2);
+
+  function drawHUD(d) {
+    const mono = MONO;
+    ctx.font = '11px ' + mono; ctx.fillStyle = 'rgba(7,18,38,0.72)'; ctx.fillRect(10, 10, 232, 82);
+    ctx.fillStyle = '#c8d7ef';
+    const frameName = { com: 'COM frame', follow1: 'Follow body 1', inertial: 'Inertial frame' }[state.cam.mode];
+    ctx.fillText('t  = ' + plain(UT(sim.t, 4)), 18, 27);
+    ctx.fillText('r  = ' + plain(U(d.r, 'm')), 18, 43);
+    ctx.fillText('v_rel = ' + plain(U(d.vrel, 'm/s')), 18, 59);
+    ctx.fillStyle = '#8094b6'; ctx.fillText(frameName + ' · ' + (sim.method === 'rk4' ? 'RK4' : 'Verlet'), 18, 76);
+    // legend (top-right)
+    const items = [['#3fd0ff', 'Body 1 / trail'], ['#ffb547', 'Body 2 / trail'], ['#9be8ff', 'v₁'], ['#ffd59a', 'v₂'], ['#5ef0b8', 'F on 1'], ['#ff7a7a', 'F on 2']];
+    const lx = W - 112; ctx.fillStyle = 'rgba(7,18,38,0.72)'; ctx.fillRect(lx - 8, 10, 110, items.length * 15 + 8);
+    items.forEach(([c, t], i) => { ctx.fillStyle = c; ctx.fillRect(lx, 18 + i * 15, 12, 3); ctx.fillStyle = '#b7c6de'; ctx.fillText(t, lx + 18, 22 + i * 15); });
+    if (sim.status !== 'ok') {
+      ctx.fillStyle = 'rgba(255,93,108,0.9)'; ctx.font = '600 13px sans-serif';
+      const msg = sim.statusMsg; const tw = ctx.measureText(msg).width;
+      ctx.fillText(msg, Math.max(10, W / 2 - tw / 2), 34);
+    }
+  }
+
+  /* ---------------- 4.2 Energy graph ---------------- */
+  const energyCv = $('energyCanvas'), ectx = energyCv.getContext('2d');
+  function drawEnergy() {
+    const w = energyCv.width / DPR, h = energyCv.height / DPR;
+    ectx.setTransform(DPR, 0, 0, DPR, 0, 0); ectx.clearRect(0, 0, w, h);
+    const n = energy.t.length;
+    const L = 64, R = 10, T = 10, B = 24, pw = w - L - R, ph = h - T - B;
+    ectx.font = '10px ' + MONO;
+    if (n < 2) { ectx.fillStyle = '#5a6d8f'; ectx.fillText('Press Play to record energy data…', L + 10, T + ph / 2); return; }
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < n; i++) { lo = Math.min(lo, energy.pe[i], energy.e[i]); hi = Math.max(hi, energy.ke[i], energy.e[i]); }
+    lo = Math.min(lo, 0); hi = Math.max(hi, 0);
+    const pad = 0.06 * (hi - lo || 1); lo -= pad; hi += pad;
+    const t0 = energy.t[0], t1 = energy.t[n - 1] || 1;
+    const X = t => L + (t - t0) / ((t1 - t0) || 1) * pw, Y = v => T + (hi - v) / (hi - lo) * ph;
+    // axes & gridlines
+    ectx.strokeStyle = 'rgba(70,110,170,0.2)'; ectx.lineWidth = 1; ectx.fillStyle = '#7f93b5';
+    for (let i = 0; i <= 4; i++) { const v = lo + (hi - lo) * i / 4, y = Y(v); ectx.beginPath(); ectx.moveTo(L, y); ectx.lineTo(L + pw, y); ectx.stroke(); ectx.fillText(plain(U(v, '', 3)), 4, y + 3); }
+    ectx.strokeStyle = 'rgba(200,215,240,0.4)'; ectx.beginPath(); ectx.moveTo(L, Y(0)); ectx.lineTo(L + pw, Y(0)); ectx.stroke();
+    ectx.fillText('J', 4, T + 2);
+    ectx.fillText('t = ' + plain(U(t0, 's', 3)), L, h - 6);
+    const lbl = plain(UT(t1, 3)); ectx.fillText(lbl, L + pw - ectx.measureText(lbl).width, h - 6);
+    const line = (arr, col, wdt) => { ectx.beginPath(); for (let i = 0; i < n; i++) { const x = X(energy.t[i]), y = Y(arr[i]); i ? ectx.lineTo(x, y) : ectx.moveTo(x, y); } ectx.strokeStyle = col; ectx.lineWidth = wdt; ectx.stroke(); };
+    line(energy.ke, '#ffb547', 1.6); line(energy.pe, '#3fd0ff', 1.6); line(energy.e, '#ffffff', 2);
+  }
+
+  /* ---------------- 4.3 Dashboard ---------------- */
+  const DASH = {
+    dgMotion: [
+      ['r', 'Separation r', 'r = |r₂ − r₁|'],
+      ['v1', 'Speed of body 1', '|v₁|  (inertial frame)'],
+      ['v2', 'Speed of body 2', '|v₂|  (inertial frame)'],
+      ['vrel', 'Relative speed', 'v = |v₂ − v₁|'],
+      ['R', 'COM position', 'R = (m₁r₁ + m₂r₂)/(m₁+m₂)'],
+      ['V', 'COM velocity |V|', 'V = (m₁v₁ + m₂v₂)/(m₁+m₂)'],
+      ['r1c', 'Orbit radius |r₁ − R|', '= (m₂/M) r'],
+      ['r2c', 'Orbit radius |r₂ − R|', '= (m₁/M) r'],
+    ],
+    dgSystem: [
+      ['M', 'Total mass M', 'M = m₁ + m₂'],
+      ['mred', 'Reduced mass μ', 'μ = m₁m₂/(m₁+m₂)'],
+      ['KE', 'Kinetic energy', 'KE = ½m₁v₁² + ½m₂v₂²'],
+      ['PE', 'Potential energy', 'PE = −G m₁ m₂ / r'],
+      ['E', 'Mechanical energy', 'E = KE + PE'],
+      ['L', 'Angular momentum L_z', 'L = Σ mᵢ (xᵢ v_yᵢ − yᵢ v_xᵢ)  (about COM)'],
+      ['P', 'Linear momentum |P|', 'P = m₁v₁ + m₂v₂'],
+    ],
+    dgOrbit: [
+      ['eps', 'Specific energy ε', 'ε = v²/2 − G(m₁+m₂)/r'],
+      ['h', 'Specific ang. mom. h', 'h = |r × v|'],
+      ['e', 'Eccentricity e', 'e = |[(v² − μ_g/r) r − (r·v) v] / μ_g|'],
+      ['a', 'Semi-major axis a', 'a = −μ_g / (2ε)'],
+      ['T', 'Orbital period T', 'T = 2π √(a³ / G(m₁+m₂))  (bound only)'],
+      ['rp', 'Periapsis r_p', 'r_p = h² / [μ_g (1 + e)]'],
+      ['ra', 'Apoapsis r_a', 'r_a = h² / [μ_g (1 − e)]  (e < 1 only)'],
+      ['vp', 'Rel. speed at periapsis', 'v_p = h / r_p'],
+      ['va', 'Rel. speed at apoapsis', 'v_a = h / r_a'],
+      ['vinf', 'Hyperbolic excess v∞', 'v∞ = √(2ε)  (ε > 0)'],
+    ],
+  };
+  function buildDashboard() {
+    for (const [gid, rows] of Object.entries(DASH)) {
+      const g = $(gid);
+      for (const [k, label, tip] of rows) {
+        const div = document.createElement('div'); div.className = 'drow'; div.dataset.tip = tip;
+        div.innerHTML = '<span class="dl">' + label + '</span><span class="dv" id="d_' + k + '">—</span>';
+        g.appendChild(div);
+      }
+    }
+  }
+  let lastDash = 0;
+  function setD(k, html) { const el = $('d_' + k); if (el) el.innerHTML = html; }
+  function dotClass(el, v, g, y) { el.className = 'dot ' + (v < g ? 'g' : v < y ? 'y' : 'r'); }
+
+  function updateDashboard(force) {
+    const now = performance.now();
+    if (!force && now - lastDash < 100) return;
+    lastDash = now;
+    const d = Phys.diagnostics(sim), s = sim.s;
+    setD('r', U(d.r, 'm')); setD('v1', U(d.v1, 'm/s')); setD('v2', U(d.v2, 'm/s')); setD('vrel', U(d.vrel, 'm/s'));
+    setD('R', '(' + sci(d.Rx, 3) + ', ' + sci(d.Ry, 3) + ')<span class="u">m</span>');
+    setD('V', U(Math.hypot(d.Vx, d.Vy), 'm/s'));
+    setD('r1c', U(Math.hypot(s[0] - d.Rx, s[1] - d.Ry), 'm')); setD('r2c', U(Math.hypot(s[2] - d.Rx, s[3] - d.Ry), 'm'));
+    setD('M', U(d.M, 'kg')); setD('mred', U(d.mred, 'kg'));
+    setD('KE', U(d.KE, 'J')); setD('PE', U(d.PE, 'J')); setD('E', U(d.E, 'J'));
+    setD('L', U(d.Lcm, 'kg·m²/s')); setD('P', U(d.P, 'kg·m/s'));
+    setD('eps', U(d.eps, 'J/kg')); setD('h', U(Math.abs(d.h), 'm²/s')); setD('e', sci(d.e, 5));
+    setD('a', d.cls === 'parabolic' ? '∞<span class="u">(parabolic)</span>' : U(d.a, 'm') + (d.a < 0 ? '<span class="u">(a&lt;0)</span>' : ''));
+    setD('T', d.bound ? UT(d.T) : '—<span class="u">unbound: no period</span>');
+    setD('rp', U(d.rp, 'm'));
+    setD('ra', d.bound ? U(d.ra, 'm') : '—<span class="u">unbound: no apoapsis</span>');
+    setD('vp', U(d.vp, 'm/s'));
+    setD('va', d.bound ? U(d.va, 'm/s') + '<span class="u">(v_p/v_a = ' + (d.vp / d.va).toFixed(3) + ')</span>' : '—<span class="u">unbound</span>');
+    setD('vinf', d.eps > 0 ? U(d.vinf, 'm/s') : '—<span class="u">bound</span>');
+    const names = { circular: 'CIRCULAR', elliptical: 'ELLIPTICAL', parabolic: 'PARABOLIC', hyperbolic: 'HYPERBOLIC' };
+    const cb = $('classBox'); cb.textContent = names[d.cls] + '  ·  e = ' + d.e.toFixed(4) + '  ·  ε ' + (d.eps < 0 ? '< 0' : d.eps > 0 ? '> 0' : '= 0');
+    cb.className = 'classbox chip cls-' + d.cls;
+    const chip = $('chipClass'); chip.textContent = 'trajectory: ' + d.cls; chip.className = 'chip cls-' + d.cls;
+
+    // conservation indicators
+    const Eref = Math.abs(sim.E0) > 1e-3 * Math.abs(sim.PE0) ? Math.abs(sim.E0) : Math.abs(sim.PE0);
+    const eDrift = Math.abs(d.E - sim.E0) / Eref * 100;
+    const lDrift = Math.abs(d.L - sim.L0) / Math.max(Math.abs(sim.L0), 1e-300) * 100;
+    const pRel = d.P / Math.max(d.mred * d.vrel, 1e-300);
+    $('indE').textContent = eDrift.toExponential(2) + ' %' + (Eref !== Math.abs(sim.E0) ? ' (of |PE₀|)' : '');
+    $('indL').textContent = Math.abs(sim.L0) > 0 ? lDrift.toExponential(2) + ' %' : 'L₀ = 0 (radial)';
+    $('indP').innerHTML = U(d.P, 'kg·m/s', 3);
+    dotClass($('indEdot'), eDrift, 0.01, 1); dotClass($('indLdot'), Math.abs(sim.L0) > 0 ? lDrift : 0, 1e-4, 0.1); dotClass($('indPdot'), pRel, 1e-9, 1e-6);
+
+    // work–energy balance
+    $('balW').innerHTML = U(sim.W, 'J'); $('balDE').innerHTML = U(d.E - sim.E0, 'J');
+    $('balRes').innerHTML = U(d.E - sim.E0 - sim.W, 'J') + '<span class="u">(' + (Math.abs(d.E - sim.E0 - sim.W) / Eref * 100).toExponential(1) + ' %)</span>';
+    $('balJ').innerHTML = U(Math.hypot(sim.Jx, sim.Jy), 'N·s');
+    const Jm = Math.hypot(sim.Jx, sim.Jy), Pres = Math.hypot(d.Px - sim.Px0 - sim.Jx, d.Py - sim.Py0 - sim.Jy);
+    $('balPres').innerHTML = U(Pres, 'N·s') + (Jm > 0 ? '<span class="u">(' + (Pres / Jm * 100).toExponential(1) + ' % of |J|)</span>' : '');
+    $('balLres').innerHTML = U(d.L - sim.L0 - sim.Lext, 'kg·m²/s') + (sim.L0 ? '<span class="u">(' + (Math.abs(d.L - sim.L0 - sim.Lext) / Math.abs(sim.L0) * 100).toExponential(1) + ' % of |L₀|)</span>' : '');
+    $('balState').textContent = sim.thrust ? (sim.thrust.left > 0 ? 'burning (' + (100 * (1 - sim.thrust.left / sim.thrust.total)).toFixed(0) + ' %)' : 'burn complete · F = ' + plain(U(sim.thrust.F, 'N', 3))) : 'off';
+    $('btnThrust').disabled = !!(sim.thrust && sim.thrust.left > 0) || sim.status !== 'ok';
+
+    updateKepler(d);
+    updateGeo(d);
+    updateStatus();
+  }
+
+  /* ---------------- 4.4 Kepler panel ---------------- */
+  let icA = NaN, keplerRefA = NaN;
+  function updateKepler(d) {
+    if (d.bound) {
+      const b = d.a * Math.sqrt(1 - d.e * d.e);
+      // theoretical period from the orbit's reference semi-major axis: from the initial conditions,
+      // or from the state at the end of the latest thrust burn (the instantaneous a oscillates
+      // slightly with the integrator's bounded energy error, largest near periapsis)
+      if (!sim.thrust) keplerRefA = icA;
+      else if (sim.thrust.left === 0 && keplerRefA === icA) { keplerRefA = d.a; periodTracker.reset(sim); }
+      else if (sim.thrust.left > 0) keplerRefA = icA;
+      const Tth = 2 * Math.PI * Math.sqrt(keplerRefA ** 3 / (G * sim.M));
+      $('k1a').innerHTML = U(d.a, 'm'); $('k1b').innerHTML = U(b, 'm'); $('k1c').innerHTML = U(d.a * d.e, 'm');
+      $('k3T').innerHTML = UT(Tth, 6) + '<span class="u">(a = ' + sci(keplerRefA, 6) + ' m)</span>';
+      const Tn = periodTracker.Tnum;
+      $('k3N').innerHTML = Number.isFinite(Tn) ? UT(Tn, 6) + '<span class="u">(' + periodTracker.count + ' orbit' + (periodTracker.count > 1 ? 's' : '') + ')</span>' : 'measuring… (complete one orbit)';
+      $('k3E').textContent = Number.isFinite(Tn) ? (Math.abs(Tn - Tth) / Tth * 100).toExponential(2) + ' %' : '—';
+      $('k3R').innerHTML = Number.isFinite(Tn) ? U(Tn * Tn / (keplerRefA ** 3), 's²/m³', 6) : '—';
+      $('k3R2').innerHTML = U(4 * Math.PI * Math.PI / (G * sim.M), 's²/m³', 6);
+    } else {
+      ['k1a', 'k1b', 'k1c'].forEach(id => $(id).innerHTML = '—<span class="u">unbound</span>');
+      $('k3T').innerHTML = '—<span class="u">no period (unbound)</span>'; $('k3N').textContent = '—'; $('k3E').textContent = '—'; $('k3R').textContent = '—';
+      $('k3R2').innerHTML = U(4 * Math.PI * Math.PI / (G * sim.M), 's²/m³');
+    }
+    $('k1f').textContent = state.cam.mode === 'follow1' ? 'body 1 (relative orbit)' : 'COM (each body’s orbit)';
+    const st = rec => rec.state === 'armed' ? 'waiting for ' + (rec.trigger === 'peri' ? 'periapsis' : 'apoapsis') + '…' : rec.state === 'rec' ? 'recording ' + (100 * rec.elapsed / rec.dur).toFixed(0) + ' %' : null;
+    $('kA').innerHTML = st(recA) || (recA.state === 'done' ? U(recA.area, 'm²') : '—');
+    $('kB').innerHTML = st(recB) || (recB.state === 'done' ? U(recB.area, 'm²') : '—');
+    $('kRatio').textContent = recA.state === 'done' && recB.state === 'done' ? (recA.area / recB.area).toFixed(6) : '—';
+    const dur = (recA.dur || recB.dur || (d.bound ? d.T : Tref) / state.kDtDen);
+    $('kTh').innerHTML = U(Math.abs(d.h) * dur / 2, 'm²') + '<span class="u">(Δt = ' + plain(U(dur, 's', 3)) + ')</span>';
+    const vA = recA.state === 'done' ? recA.arc / recA.dur : NaN, vB = recB.state === 'done' ? recB.arc / recB.dur : NaN;
+    $('kV').innerHTML = (Number.isFinite(vA) ? sci(vA, 4) : '—') + ' / ' + (Number.isFinite(vB) ? sci(vB, 4) : '—') + '<span class="u">m/s</span>';
+  }
+
+  /* ---------------- 4.5 GEO panel ---------------- */
+  function updateGeoStatic() {
+    const rg = Phys.geoRadius(EARTH.M, EARTH.Tsid);
+    $('gR').innerHTML = U(rg, 'm', 5); $('gAlt').innerHTML = U(rg - EARTH.R, 'm', 5);
+    $('gV').innerHTML = U(Math.sqrt(G * EARTH.M / rg), 'm/s', 5);
+    $('gT').innerHTML = UT(2 * Math.PI * Math.sqrt(rg ** 3 / (G * EARTH.M)), 7);
+  }
+  function updateGeo(d) {
+    if (!state.earthMode) { $('gLon').textContent = '— (enable Earth mode)'; $('gDrift').textContent = '—'; $('gPred').textContent = '—'; return; }
+    const omegaE = 2 * Math.PI / EARTH.Tsid;
+    const lonRad = periodTrackerAccTotal() - omegaE * sim.t;   // longitude rel. to the station (initial longitude)
+    let lonDeg = lonRad * 180 / Math.PI; let wrapped = ((lonDeg + 180) % 360 + 360) % 360 - 180; if (Math.abs(wrapped) < 5e-4) wrapped = 0;
+    $('gLon').innerHTML = (wrapped >= 0 ? '+' : '') + wrapped.toFixed(3) + '<span class="u">° (' + (wrapped > 0 ? 'east' : wrapped < 0 ? 'west' : 'above station') + ')</span>';
+    const days = sim.t / EARTH.Tsid;
+    const rate = Math.abs(lonDeg / days) < 5e-4 ? 0 : lonDeg / days;
+    $('gDrift').innerHTML = days > 0.05 ? ((rate >= 0 ? '+' : '') + rate.toFixed(3) + '<span class="u">° / sidereal day</span>') : 'measuring…';
+    if (d.bound) { let pred = 360 * (EARTH.Tsid / d.T - 1); if (Math.abs(pred) < 5e-4) pred = 0; $('gPred').innerHTML = (pred >= 0 ? '+' : '') + pred.toFixed(3) + '<span class="u">° / sidereal day (' + (Math.abs(pred) < 1e-3 ? 'stationary' : pred > 0 ? 'eastward' : 'westward') + ')</span>'; }
+    else $('gPred').textContent = '— (unbound)';
+  }
+  // unwrapped angle since reset, unaffected by thrust resets of the period tracker
+  let accAngle = 0, accPrev = null;
+  function periodTrackerAccTotal() { return accAngle; }
+  function trackAngle() {
+    const s = sim.s, th = Math.atan2(s[3] - s[1], s[2] - s[0]);
+    if (accPrev === null) { accPrev = th; accAngle = 0; return; }
+    let d = th - accPrev; if (d > Math.PI) d -= 2 * Math.PI; else if (d < -Math.PI) d += 2 * Math.PI;
+    accAngle += d; accPrev = th;
+  }
+
+  /* ============================================================
+     SECTION 5 — INTEGRATOR COMPARISON (offline, chunked runs)
+     ============================================================ */
+  const cmpCv = $('cmpCanvas'), cctx = cmpCv.getContext('2d');
+  let cmpData = null, cmpRunning = false;
+  function runComparison() {
+    if (cmpRunning) return;
+    const ic = buildIC();
+    const periods = +$('cmpPeriods').value, mul = +$('cmpDtMul').value;
+    const T = Tref, dt = currentDt() * mul, total = periods * T, nSteps = Math.ceil(total / dt);
+    // strictly fixed step for both methods (η = ∞ disables the adaptive safety split) so that the
+    // comparison isolates the integrators themselves
+    const mkSim = m => new Phys.Simulation({ m1: ic.m1, m2: ic.m2, r0: ic.r0, v0: ic.v0, angle: ic.angle, method: m, eta: Infinity, rCollide: state.earthMode ? EARTH.R : 1e-4 * ic.r0 });
+    const runs = { verlet: { sim: mkSim('verlet'), t: [], y: [], max: 0, ms: 0 }, rk4: { sim: mkSim('rk4'), t: [], y: [], max: 0, ms: 0 } };
+    const E0 = runs.verlet.sim.E0, Eref = Math.abs(E0) > 1e-3 * Math.abs(runs.verlet.sim.PE0) ? Math.abs(E0) : Math.abs(runs.verlet.sim.PE0);
+    const sampleEvery = Math.max(1, Math.floor(nSteps / 500));
+    cmpRunning = true; $('btnCmp').disabled = true;
+    cmpData = { runs, periods, dt, nSteps, Eref };
+    let i = 0;
+    function chunk() {
+      const end = Math.min(nSteps, i + 20000);
+      for (const key of ['verlet', 'rk4']) {
+        const R = runs[key], t0 = performance.now();
+        for (let j = i; j < end && R.sim.status === 'ok'; j++) {
+          R.sim.advance(dt);
+          if (j % sampleEvery === 0 || j === nSteps - 1) {
+            const err = Math.abs(Phys.diagnostics(R.sim).E - E0) / Eref;
+            R.t.push(R.sim.t / T); R.y.push(err); R.max = Math.max(R.max, err);
+          }
+        }
+        R.ms += performance.now() - t0;
+      }
+      i = end;
+      $('cmpStatus').textContent = 'running… ' + (100 * i / nSteps).toFixed(0) + ' %';
+      drawComparison();
+      if (i < nSteps) setTimeout(chunk, 0);
+      else { cmpRunning = false; $('btnCmp').disabled = false; showCmpResults(); }
+    }
+    chunk();
+  }
+  function showCmpResults() {
+    const { runs, periods, dt, nSteps } = cmpData;
+    const fin = R => R.y.length ? R.y[R.y.length - 1] : NaN;
+    const status = R => R.sim.status === 'ok' ? '' : ' (' + R.sim.status + ')';
+    $('cmpOut').innerHTML =
+      '<span>Setup</span><span>' + periods + ' ref. periods · Δt = ' + sci(dt, 3) + ' s · ' + nSteps.toLocaleString() + ' steps</span>' +
+      '<span style="color:var(--cyan)">Verlet max / final |ΔE/E₀|</span><span>' + runs.verlet.max.toExponential(2) + ' / ' + fin(runs.verlet).toExponential(2) + status(runs.verlet) + '</span>' +
+      '<span style="color:var(--amber)">RK4 max / final |ΔE/E₀|</span><span>' + runs.rk4.max.toExponential(2) + ' / ' + fin(runs.rk4).toExponential(2) + status(runs.rk4) + '</span>' +
+      '<span>Wall time Verlet / RK4</span><span>' + runs.verlet.ms.toFixed(0) + ' ms / ' + runs.rk4.ms.toFixed(0) + ' ms</span>' +
+      '<span>Force evaluations / step</span><span>Verlet 1 · RK4 4</span>';
+    console.log('[Gravity Lab] Integrator comparison:', { periods, dt, steps: nSteps, verletMax: runs.verlet.max, verletFinal: fin(runs.verlet), rk4Max: runs.rk4.max, rk4Final: fin(runs.rk4) });
+  }
+  function drawComparison() {
+    const w = cmpCv.width / DPR, h = cmpCv.height / DPR;
+    cctx.setTransform(DPR, 0, 0, DPR, 0, 0); cctx.clearRect(0, 0, w, h);
+    cctx.font = '10px ' + MONO;
+    if (!cmpData) { cctx.fillStyle = '#5a6d8f'; cctx.fillText('Press “Run comparison”.', 70, h / 2); return; }
+    const L = 48, R = 10, T = 10, B = 22, pw = w - L - R, ph = h - T - B;
+    const all = [...cmpData.runs.verlet.y, ...cmpData.runs.rk4.y].filter(v => v > 0);
+    if (!all.length) return;
+    let lo = Math.floor(Math.log10(Math.min(...all))), hi = Math.ceil(Math.log10(Math.max(...all)));
+    lo = Math.max(lo, -17); if (hi <= lo) hi = lo + 1;
+    const X = t => L + t / cmpData.periods * pw, Y = v => T + (hi - Math.log10(Math.max(v, 1e-17))) / (hi - lo) * ph;
+    cctx.strokeStyle = 'rgba(70,110,170,0.2)'; cctx.fillStyle = '#7f93b5';
+    const stepD = Math.max(1, Math.ceil((hi - lo) / 6));
+    for (let k = lo; k <= hi; k += stepD) { const y = T + (hi - k) / (hi - lo) * ph; cctx.beginPath(); cctx.moveTo(L, y); cctx.lineTo(L + pw, y); cctx.stroke(); cctx.fillText('1e' + k, 6, y + 3); }
+    cctx.fillText('0', L, h - 6); const lb = cmpData.periods + ' periods'; cctx.fillText(lb, L + pw - cctx.measureText(lb).width, h - 6);
+    for (const [key, col] of [['verlet', '#3fd0ff'], ['rk4', '#ffb547']]) {
+      const Rn = cmpData.runs[key]; cctx.beginPath();
+      Rn.t.forEach((t, i) => { const x = X(t), y = Y(Rn.y[i]); i ? cctx.lineTo(x, y) : cctx.moveTo(x, y); });
+      cctx.strokeStyle = col; cctx.lineWidth = 1.5; cctx.stroke();
+    }
+  }
+
+  /* ============================================================
+     SECTION 6 — SELF-TEST UI (results also printed in the console)
+     ============================================================ */
+  function runTestsUI() {
+    $('testsBody').innerHTML = '<tr><td colspan="6" class="note">Running…</td></tr>';
+    setTimeout(() => {
+      const { results, ms, npass } = Phys.runSelfTests(console.log.bind(console));
+      $('testsBody').innerHTML = results.map((r, i) =>
+        '<tr><td>' + (i + 1) + '</td><td>' + r.name + '</td><td class="' + (r.pass ? 'pass' : 'fail') + '">' + (r.pass ? 'PASS' : 'FAIL') + '</td><td class="m">' +
+        (Number.isFinite(r.measured) ? r.measured.toExponential(3) : String(r.measured)) + '</td><td class="m">' + r.tol.toExponential(1) + '</td><td class="note" style="margin:0">' + r.detail + '</td></tr>').join('');
+      $('testsSummary').textContent = npass + ' / ' + results.length + ' passed in ' + ms.toFixed(0) + ' ms (executed in this browser just now)';
+      const chip = $('chipTests'); chip.textContent = 'self-tests: ' + npass + '/' + results.length + ' pass';
+      chip.style.color = npass === results.length ? 'var(--green)' : 'var(--red)';
+      window.__gravityLabTests = results;
+    }, 30);
+  }
+
+  /* ============================================================
+     SECTION 7 — MAIN ANIMATION LOOP
+     ============================================================ */
+  const MAX_STEPS_PER_FRAME = 6000;
+  let lastFrame = performance.now(), fpsAcc = 0, fpsN = 0, fpsT = 0;
+  function frame(now) {
+    const dtReal = Math.min(0.05, (now - lastFrame) / 1000); lastFrame = now;
+    fpsAcc += dtReal; fpsN++; if (now - fpsT > 500) { $('chipFps').textContent = (fpsN / fpsAcc).toFixed(0) + ' fps'; fpsAcc = 0; fpsN = 0; fpsT = now; }
+    lastSubsteps = 0; speedLimited = false;
+    if (state.playing && sim.status === 'ok') {
+      const dt = currentDt();
+      simDebt += simRate() * dtReal;
+      let n = Math.floor(simDebt / dt);
+      if (n > MAX_STEPS_PER_FRAME) { n = MAX_STEPS_PER_FRAME; simDebt = 0; speedLimited = true; } else simDebt -= n * dt;
+      for (let i = 0; i < n; i++) {
+        if (!sim.advance(dt)) break;
+        sampleAfterStep();
+      }
+      lastSubsteps = n;
+      if (sim.status !== 'ok') { state.playing = false; updatePlayBtn(); toast(sim.statusMsg, 'err'); updateDashboard(true); }
+    }
+    render();
+    drawEnergy();
+    updateDashboard(false);
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------------- init ---------------- */
+  function init() {
+    buildDashboard();
+    wireControls(); wireCanvas();
+    $('trailLen').value = state.trailLen; $('trailLenV').textContent = state.trailLen;
+    $('thMag').value = state.thMag; $('thMagV').textContent = state.thMag + ' %';
+    $('thDur').value = state.thDur; $('thDurV').textContent = state.thDur + ' %T';
+    $('kDt').value = state.kDtDen; $('kDtV').textContent = 'T / ' + state.kDtDen;
+    updateGeoStatic();
+    new ResizeObserver(() => { resizeCanvas(); }).observe(cv);
+    resizeCanvas();
+    resetSim(true);                  // creates the simulation and observers
+    loadPreset('A');
+    requestAnimationFrame(t => { lastFrame = t; requestAnimationFrame(frame); });
+    setTimeout(runTestsUI, 400);
+  }
+  init();
+})();
+</script>
+</body>
+</html>

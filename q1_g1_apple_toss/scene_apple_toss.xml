@@ -1,0 +1,13 @@
+<mujoco model="g1_with_hands apple toss scene">
+  <include file="scene_with_hands.xml"/>
+  <worldbody>
+    <body name="apple" pos="0.3 0.17 1.2">
+      <freejoint name="apple_free"/>
+      <geom name="apple_geom" type="sphere" size="0.035" mass="0.15"
+            friction="1.0 0.01 0.015" condim="6" solref="0.006 1" solimp="0.95 0.99 0.001"
+            rgba="0.85 0.08 0.08 1"/>
+      <geom name="apple_stem" type="capsule" fromto="0 0 0.030 0 0 0.046" size="0.003"
+            contype="0" conaffinity="0" mass="0" rgba="0.35 0.2 0.05 1"/>
+    </body>
+  </worldbody>
+</mujoco>
